@@ -1,0 +1,2278 @@
+---
+title: "Bird Project Final Figures"
+author: "Roi A.K."
+date: "12/2/2020"
+output:
+  html_document:
+    toc: true
+    toc_depth: 5
+    toc_float: true
+    theme: 'journal'
+---
+
+
+```{r set up,message=FALSE,warning=FALSE, echo=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE)
+
+
+library(tidyverse) #Grammar for data manipulation
+library(data.table) #more data manipulation tools
+library(DataCombine) #Data manipulation grammar
+
+library(WriteXLS) #writing excel
+library(readxl) #reading excel
+
+library(knitr) #markdown tools
+library(kableExtra) #making pretty html tables
+
+library(gridExtra) # allows plotting of multiple ggplots in one
+library(grid) #same as above
+library(ggpubr) #same as above
+library(colorRamps) # Colors for graphing
+library(RColorBrewer) # Colors for graphing
+library(scales) #Helps with visalization
+#library(ggvegan) #ggplot for vegan package
+library(ggiraphExtra) #visualizing model output
+library(ggpattern) # texture bar graphs
+library(wesanderson) # color palettes
+
+library(mosaic) #Summary statistics
+library(DescTools) #Summary statistics
+
+library(effects) #Extracting model results
+library(MuMIn) #Model results and interpretation
+library(lme4) #mixed models
+library(glmmTMB) #rsquared
+library(merTools) #extracting results from mixed models
+library(ciTools) #CIs for glms
+library(sjPlot) #visualizing and table output of models
+library(arm) #model output visualization
+library(rsq) #rsquared
+
+library(naniar) # Visualization of missing values
+library(Amelia) # Testing missing columns
+#library(corrplot) #correlation plots
+#library(psych) #correlation plots
+
+library(leaps) #Information Criterion Test
+library(rcompanion) #permutation tests
+library(permute) #permutation tests
+library(GmAMisc) #permutation t-tests
+library(tadaatoolbox) #pretty t-test tables
+
+library(vegan) #ordination, dissimilarity indices, and extrapolation tests
+library(iNEXT) #similar to vegan
+library(Matrix) #helping create dissimilarity matrices
+library(SpadeR) #Diversity indices
+library(fossil) #extrapolation functions for richness (jacknife, chao, etc.)
+library(CircStats) #circular statistics tests
+library(spatialEco) #Spatially explicit tests
+
+
+#file path
+path_files<- 'C:/Users/roiak/Documents/Ronen/Final'
+
+#sourcing datasets
+source("Ankori-Karlinsky_N.A_Birds_Datasets.R")
+
+#Only keeping files we need
+rm(list=setdiff(ls(), c("full_d","path_files",
+                        "Prediction_Figures",
+                        "Assumption_Figures",
+                        "Matched",
+                        "Matched_Ave",
+                        "Sampled_Matched_Ave",
+                        "tidy_full",
+                        "SampledFull",
+                        "Effort",
+                        "rareness"
+                        )))
+
+
+#Saving figures to file path as png
+knitr::opts_chunk$set(
+  dev = 'png',
+  fig.path = (paste0(path_files,"/Final Figures/Figures December 2020 (2)/")),
+  dpi=300
+)
+
+
+```
+
+
+## Introduction
+
+
+
+##### Background and Main Questions
+
+Here we present a comprehensive comparison of estimates of species richness obtained from Breeding Bird Survey (BBS) vs. Breeding Bird Atlas (BBA) data. 
+
+Specifically, we ask two main questions:  
+
+- **_1. Are estimates of regional richness (number of species at the scale of a large region such as state) obtained from the two sources of data similar?_**  
+- **_2. If not, what are the reasons for the observed differences?_**  
+
+Obtaining similar estimates of regional richness from the two sources may strengthen our confidence in the credibility of analyses based on these data. On the other hand, differences in estimates of regional richness may question the credibility of such analyses. Such comparisons may also help to identify current limitations and biases in BBS and/or BBA data, thereby providing possible ideas for improving the methods of data collection and/or analysis.
+
+Elucidating the limitations and biases of these widely-used data can also strengthen our scientific understanding and interpretation of previous results obtained from these data sources, as well as shore up evidence-driven conservation efforts as birds in North America are increasingly threatened by human activities that lead to habitat loss and fragmentation.
+
+##### Main Predictions 
+
+We make 8 specific predictions:  
+
+- **(1)** At the regional scale, BBA blocks sample a larger range of environmental conditions than BBS routes.  
+- **(2)** At the local scale (the scale of the observational unit), BBA blocks are more heterogeneous in their environmental conditions than BBS routes.  
+- **(3)** Estimates of regional richness based on BBA data would be higher than those based on BBS data.  
+- **(4)** Much of the differences in regional richness between the two data sources would be accounted for by underlying differences in sample size (number of observation units).  
+- **(5)** Estimates of regional richness based on BBA data would be higher than those based on BBS data also after controlling for underlying differences in the number of observations.  
+- **(6)** Local richness in BBA blocks would be higher than that of BBS routes.  
+- **(7)** Compositional turnover among BBS routes would be smaller than that among BBA blocks.  
+- **(8)** Some of the variation in local richness among BBA blocks and BBS routes would be accounted for by underlying differences in sampling effort.
+
+We tested these predictions by comparing the distribution of key environmental variables  
+
+- elevation, precipitation, and temperature  
+
+and estimates of species diversity  
+
+- regional richness, local richness, and compositional turnover  
+
+between BBS routes and BBA blocks in five states in Northeastern US:  
+
+- Massachusetts (MA)  
+- Michigan (MI)  
+- New York (NY)  
+- Pennsylvania (PA)  
+- Vermont (VT)
+
+
+##### Ad-hoc Analyses  
+
+- **(1)** Regional richness estimates for BBS based on extrapolation analyses will still be lower than the observed regional richness in BBA  
+- **(2)** A species' presence in BBA and absence in BBS will be explained either by its relative rareness or by its presence in a climatic habitat that isn't sampled by the BBS  
+- **(3)** Higher local environmental heterogeneity will correlate with higher local species richness 
+- **(4)** Geographic matching of pairs of BBA and BBS sampling units based on largest overlap (thereby controlling for sample size and geography) will still show higher compositional turnover for BBA blocks  
+    + We run similarity analyses of environmental conditions within sampling units (land-class diversity, precipitation, elevation, and temperature)  
+    + We use Bray-Curtis similarity for each variable  
+    + We use Gower multivariate similarity to test all variables together  
+- **(5)** BBA samples different environmental conditions due to geography  
+    + Going to test whether the datasets sample different environmental conditions in terms of the distribution of each environmental variable.  
+    + Testing differences in precipitation, temperature, and mean elevation using a Kolmogorov-Smirnov test with the ks.test() function from the dgof package.  
+    + Then will run a PERMANOVA testing whether land-cover composition (shannon-wiener index) differs between BBA sites more so than between BBA sites using Bray-Curtis index (as in Ad-hoc test 4).  
+    + Will run this the whole dataset and also for each state  
+- **(6)** BBA blocks geographically matched to BBS routes with more than 30hrs sampling effort will have higher local richness.  
+    + Based on a mixed model with local richness as response, dataset as fixed effect, and state as random effect (this is folded into Main Prediction 6)
+- **(7)** To test state differences in local richness, we regressed mean difference in local richess between BBA and BBS sampling units against the mean difference in local effort for each state (this is folded into Main Prediction 8)  
+
+
+
+**This document will output figures for all these predictions**
+
+***
+
+
+## Main Predictions
+
+
+#### 1) At the regional scale, BBA blocks sample a larger range of environmental conditions than BBS routes
+
+Plotting Range of elevation (a), precipitation (b), and temperature (c), across BBA blocks (orange) and BBS routes (green) in the entire study region (All) and in each state. 
+
+
+```{r Prediction 1 Figures, message=FALSE, warning=FALSE,fig.width=5,fig.height=9,dpi=300}
+
+#Colors for BBA and BBS are "chocolate2" and "darkgreen", respectively
+
+#Subsetting only BBA and BBS for these figures
+target <- c("BBA","BBS")
+
+#Starting with Elevation
+
+a <- Assumption_Figures %>%
+  filter(Dataset %in% target) %>%
+  ggplot(aes(x=Region,y=Gamma_Elevation,fill=Dataset))+
+  geom_bar(stat="identity",
+           position=position_dodge(width=0.6),
+           width=0.6,
+           col="black")+
+  geom_point(aes(0, 0, colour = Dataset), size = 0, shape = 15)+
+  theme_classic()+
+  scale_fill_manual(values=c("chocolate2",
+                             "darkgreen"),
+                    guide=F)+
+  scale_color_manual(values=c("chocolate2",
+                             "darkgreen"))+
+  scale_y_continuous(breaks=seq(0,1600,500))+
+  labs(title="a",
+  y="Elevation\nrange (m)",
+  fill=NULL,
+  color=NULL,
+  shape=NULL)+
+  theme(plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+        legend.position = c(0.35,0.9),
+        legend.direction = "vertical", 
+        legend.key = element_rect(fill = NA,color=NA),
+        legend.key.height = unit(0.5, "cm"),
+        legend.key.width = unit(0.5, "cm"),
+        legend.text = element_text(size=12))+
+    guides(color = guide_legend(override.aes = list(linetype = 0, size = 4)))
+        
+#a
+
+#Now Precipitation Range
+
+b <- Assumption_Figures %>%
+  filter(Dataset %in% target) %>%
+  ggplot(aes(x=Region,y=Gamma_Precipitation,fill=Dataset))+
+  geom_bar(stat="identity",
+           position=position_dodge(width=0.6),
+           width=0.6,
+           col="black")+
+  theme_classic()+
+  scale_fill_manual(values=c("chocolate2",
+                             "darkgreen"))+
+  #coord_cartesian(ylim=c(0,1100))+
+  scale_y_continuous(breaks=seq(0,1200,300))+
+  labs(title="b",
+  y="Precipitation\nrange (mm)",
+  fill=NULL)+
+  theme(plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+        legend.position = "none")
+
+
+#b
+
+#Now Temperature Range
+
+c <- Assumption_Figures %>%
+  filter(Dataset %in% target) %>%
+  ggplot(aes(x=Region,y=Gamma_Temp,fill=Dataset))+
+  geom_bar(stat="identity",
+           position=position_dodge(width=0.6),
+           width=0.6,
+           col="black")+
+  theme_classic()+
+  scale_fill_manual(values=c("chocolate2",
+                             "darkgreen"))+
+  #coord_cartesian(ylim=c(0,12))+
+  scale_y_continuous(breaks=seq(0,12,3))+
+  labs(title="c",
+  y="Temperature\nrange (°C)",
+  fill=NULL)+
+  theme(plot.title=element_text(size=18,face="bold"),
+          axis.text.x = element_text(face="bold",size=17),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size=16),
+          axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+          legend.position = "none")
+
+#c
+
+#Putting all together
+
+
+figure1<-cowplot::plot_grid(a,b,c,
+                   align="hv",
+                   ncol=1) + 
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))
+
+
+figure1
+
+
+#removing
+#rm(a,b,c)
+
+```
+
+
+#### 2) At the local scale (the scale of the observational unit), BBA blocks are more heterogeneous in their environmental conditions than BBS routes
+
+Local heterogeneity of BBA blocks (green) and BBS routes (orange) quantified using three measures of heterogeneity (elevation range, land-cover richness, and land-cover diversity) for the entire study region (All) and for each state. Error bars indicate 95% confidence intervals.
+
+```{r Prediction 2 Figure, message=FALSE, warning=FALSE,fig.width=5,fig.height=9,dpi=300}
+
+#Colors for BBA and BBS are "chocolate2" and "darkgreen", respectively
+
+#Elevation Range
+a <- Assumption_Figures %>%
+  filter(Dataset %in% target) %>%
+  ggplot(aes(x=Region,y=Mean_ElevRange,color=Dataset))+
+  geom_point(size=4,
+             position = position_dodge(width = 0.6))+
+  theme_classic()+
+  scale_color_manual(values=c("chocolate2",
+                             "darkgreen"))+
+  geom_errorbar(aes(ymin=AlphaElevRange_LowCI,
+                    ymax=AlphaElevRange_UpCI),
+                width=0.25,
+                position = position_dodge(width = 0.6))+
+  coord_cartesian(ylim=c(0,400))+
+  scale_y_continuous(breaks=seq(0,400,100))+
+  labs(title="a",
+  y="Elevation range (m)",
+  color=NULL)+
+  theme(plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+        legend.position = c(0.4,0.9),
+        legend.key.height = unit(0.6, "cm"),
+        legend.key.size = unit(0.25,"cm"),
+        legend.text = element_text(size=12))
+
+#a
+
+#Now Land-Class Richness
+
+b <- Assumption_Figures %>%
+  filter(Dataset %in% target) %>%
+  ggplot(aes(x=Region,y=Mean_LandRich,color=Dataset))+
+  geom_point(size=4,
+             position = position_dodge(width = 0.6))+
+  theme_classic()+
+  scale_color_manual(values=c("chocolate2",
+                             "darkgreen"))+
+  geom_errorbar(aes(ymin=AlphaLandRich_LowCI,
+                    ymax=AlphaLandRich_UpCI),
+                width=0.25,
+                position = position_dodge(width = 0.6))+
+  coord_cartesian(ylim=c(10,16))+
+  scale_y_continuous(breaks=seq(10,16,2))+
+  labs(title="b",
+  y="Land-cover richness",
+  color=NULL)+
+  theme(plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+        legend.position = "none")
+
+#b
+
+#Now Land-Class Diversity 
+
+c <- Assumption_Figures %>%
+  filter(Dataset %in% target) %>%
+  ggplot(aes(x=Region,y=Mean_LandDiv,color=Dataset))+
+  geom_point(size=4,
+             position = position_dodge(width = 0.6))+
+  theme_classic()+
+  scale_color_manual(values=c("chocolate2",
+                             "darkgreen"))+
+  geom_errorbar(aes(ymin=AlphaLandDiv_LowCI,
+                    ymax=AlphaLandDiv_UpCI),
+                width=0.25,
+                position = position_dodge(width = 0.6))+
+  coord_cartesian(ylim=c(1.2,2.2))+
+  scale_y_continuous(breaks=seq(1.2,2.2,0.4))+
+  labs(title="c",
+  y="Land-cover diversity",
+  color=NULL)+
+  theme(plot.title=element_text(size=18,face="bold"),
+          axis.text.x = element_text(face="bold",size=17),
+          axis.title.x = element_blank(),
+          axis.text.y = element_text(size=16),
+          axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+          legend.position = "none")
+
+#c
+
+#Putting all together
+
+figure2<- cowplot::plot_grid(a,b,c,ncol=1,
+          align="hv")+ 
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))
+
+figure2
+
+#removing
+#rm(a,b,c)
+
+```
+
+#### 3-5) BBA higher Regional Richness based on Sample Size
+
+Estimates of regional bird richness based on BBA blocks ($S^{BBA}_{all}$, green), BBS routes ($S^{BBS}_{all}$, orange) and subsets of BBA blocks with the same sample size as the corresponding BBS routes ($S^{BBA}_{n}$, purple), for the entire study region (All) and for each state. For $S^{BBA}_{n}$, mean values are based on 1,000 Monte-Carlo simulations of n BBA blocks and error bars are the corresponding 95% confidence intervals.
+
+```{r Predictions 3 to 5 Figure, message=FALSE, warning=FALSE,fig.width=5,fig.height=4,dpi=300}
+
+#Colors for BBA, BBS, and BBA (n=BBS) are 
+#chocolate2, darkgreen, and chocolate2 faded 
+
+target <- c("BBA","BBS","BBA (n=BBS)")
+
+#Graphing results by sample size
+figure3<-Prediction_Figures %>%
+  filter(Dataset %in% target) %>%
+  ggplot(aes(x=Region,y=Regional_Richness,
+             group=factor(Dataset,levels=c("BBA","BBS","BBA (n=BBS)")),
+             fill=factor(Dataset,levels=c("BBA","BBS","BBA (n=BBS)"))))+
+  theme_classic()+
+  geom_bar_pattern(stat="identity",
+                   position=position_dodge(width=0.75),
+                   width=0.75,
+                   aes(pattern_density=Dataset),
+                   pattern='stripe',
+                   col="black")+
+  geom_errorbar(aes(ymin=GammaLow.CI,
+                    ymax=GammaUp.CI),
+                position=position_dodge(width=0.75),
+                width=0.25)+
+  geom_point(aes(0, 0, colour = Dataset), size = 0, shape = 15)+
+  scale_pattern_density_manual(values = c("BBA" = 0, "BBS"=0,
+                                          "BBA (n=BBS)"=0.03),
+                               guide=F)+
+  
+  scale_fill_manual(values=c("chocolate2",
+                              "darkgreen",
+                              alpha("chocolate2",0.8),
+                    labels=c("BBA","BBS","BBA (n=BBS)")),
+                    guide=F)+
+  scale_color_manual(values=c("chocolate2",
+                              "darkgreen",
+                              alpha("chocolate2",0.8)),
+                     labels=c("BBA","BBS","BBA (n=BBS)"))+
+  labs(y="Regional richness",
+       fill=NULL,
+       color=NULL,
+       shape=NULL,
+       density=NULL)+
+  coord_cartesian(ylim=c(100,300))+
+  scale_y_continuous(breaks=seq(100,300,50))+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"),
+        axis.text.x = element_text(face="bold",size=17),
+        axis.title.x = element_blank(),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+        legend.position = c(0.85,0.85),
+        legend.direction = "vertical", 
+        legend.key = element_rect(fill = NA,color=NA),
+        legend.key.height = unit(0.5, "cm"),
+        legend.key.width = unit(0.5, "cm"),
+        legend.text = element_text(size=12))+
+    guides(color = guide_legend(override.aes = list(linetype = 0, size = 4)))
+
+#output
+figure3
+
+#Now for sampled adjacent blocks
+target <- c("BBA","BBS","SampledAdjacent")
+
+figure3.1<-Prediction_Figures %>%
+  filter(Dataset %in% target) %>%
+  ggplot(aes(x=Region,y=Regional_Richness,
+             group=factor(Dataset,levels=c("BBA","BBS","SampledAdjacent")),
+             fill=factor(Dataset,levels=c("BBA","BBS","SampledAdjacent"))))+
+  theme_classic()+
+  geom_bar_pattern(stat="identity",
+                   position=position_dodge(width=0.75),
+                   width=0.75,
+                   aes(pattern_density=Dataset),
+                   pattern='stripe',
+                   col="black")+
+  scale_pattern_density_manual(values = c("BBA" = 0, "BBS"=0,
+                                          "SampledAdjacent"=0.03),
+                               guide=F)+
+  
+  scale_fill_manual(values=c("chocolate2",
+                              "darkgreen",
+                              alpha("chocolate2",0.8),
+                    labels=c("BBA","BBS","BBA (>30hr Adj)")),
+                    guide=F)+
+  scale_color_manual(values=c("chocolate2",
+                              "darkgreen",
+                              alpha("chocolate2",0.8)),
+                     labels=c("BBA","BBS","BBA (>30hr Adj)"))+
+  labs(y="Regional richness",
+       fill=NULL,
+       color=NULL,
+       shape=NULL,
+       density=NULL)+
+  coord_cartesian(ylim=c(100,300))+
+  scale_y_continuous(breaks=seq(100,300,50))+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"),
+        axis.text.x = element_text(face="bold",size=17),
+        axis.title.x = element_blank(),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+        legend.position = c(0.5,0.5),
+        legend.direction = "vertical", 
+        legend.key = element_rect(fill = NA,color=NA),
+        legend.key.height = unit(0.5, "cm"),
+        legend.key.width = unit(0.5, "cm"),
+        legend.text = element_text(size=12))+
+    guides(color = guide_legend(override.aes = list(linetype = 0, size = 4)))
+
+figure3.1
+
+#removing
+rm(target)
+
+
+```
+
+
+#### 6) Local Richness Differences by Dataset
+
+Local bird richness in BBA blocks (green) and BBS routes (orange) for the entire study region (All) and for each state. Error bars indicate 95% confidence intervals.
+
+Also plotting local richness of each dataset against the other for matched routes and then for average of adjacent blocks for well-sampled blocks
+
+```{r Prediction 6 Figure,message=FALSE, warning=FALSE,fig.width=5,fig.height=4,dpi=300}
+
+#Subsetting only BBA and BBS for these figures
+target <- c("BBA","BBS")
+
+figure4 <- Prediction_Figures %>%
+  filter(Dataset %in% target) %>%
+  ggplot(aes(x=Region,y=Local_Richness,color=Dataset))+
+  geom_point(size=4,
+             position=position_dodge(width=0.6))+
+  theme_classic()+
+  scale_color_manual(values=c("chocolate2",
+                              "darkgreen"))+
+  geom_errorbar(aes(ymin=AlphaLow.CI,
+                    ymax=AlphaUp.CI),
+                width=0.25,
+                position=position_dodge(width=0.6))+
+  coord_cartesian(ylim=c(40,100))+
+  scale_y_continuous(breaks=seq(40,100,20))+
+  labs(y="Local richness",
+  color=NULL)+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"),
+        axis.text.x = element_text(face="bold",size=17),
+        axis.title.x = element_blank(),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+        legend.position = c(0.8,0.2),
+        legend.key.height = unit(0.6, "cm"),
+        legend.key.size = unit(0.25,"cm"),
+        legend.text = element_text(size=12))
+
+figure4
+
+```
+
+
+Now will plot the same idea but as a scatterplot of local BBS richness against the average local BBA richness of adjacent sampling units.
+
+Will do this for both adjacent sampling units, those that are also well-sampled (<30 hr per route) or those that have the most overlap by area.
+
+
+```{r Prediction 6 Figure2, message=FALSE, warning=FALSE, fig.width=10,fig.height=9}
+
+#scatterplot of BBS richness by BBA richness (averaged adjacent blocks)
+a <- Matched_Ave %>%
+  ggplot(aes(x=BBS_Richness,y=BBA_Richness))+
+  geom_jitter()+
+  geom_errorbar(aes(ymin=BBA_Richness-BBA_Richness_CI,
+                    ymax=BBA_Richness+BBA_Richness_CI),
+                width=0.25,alpha=0.4,
+                position = position_dodge(width = 0.6))+
+  #geom_smooth(method="lm")+
+  geom_abline(intercept=0,slope=1,linetype="dashed")+
+  theme_classic()+
+  coord_cartesian(xlim=c(0,120),ylim=c(0,120))+
+  scale_y_continuous(breaks=seq(0,120,20))+
+  scale_x_continuous(breaks=seq(0,120,20))+
+  labs(x="BBS Local Richness",
+       y="BBA Local Richness",
+       title="Adjacent SUs")+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"),
+        axis.text.x = element_blank(),
+        axis.title = element_blank(),
+        axis.text.y = element_text(size=14))
+
+#by state
+b<- Matched_Ave %>%
+  ggplot(aes(x=BBS_Richness,y=BBA_Richness,color=State))+
+  geom_jitter()+
+  geom_errorbar(aes(ymin=BBA_Richness-BBA_Richness_CI,
+                    ymax=BBA_Richness+BBA_Richness_CI),
+                width=0.25,alpha=0.4,
+                position = position_dodge(width = 0.6))+
+  #geom_smooth(method="lm")+
+  geom_abline(intercept=0,slope=1,linetype="dashed")+
+  scale_color_brewer(type="qual",palette=2)+
+  theme_classic()+
+  coord_cartesian(xlim=c(0,120),ylim=c(0,120))+
+  scale_y_continuous(breaks=seq(0,120,20))+
+  scale_x_continuous(breaks=seq(0,120,20))+
+  labs(x="BBS Local Richness",
+       y="BBA Local Richness")+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"),
+        axis.text.x = element_blank(),
+        axis.title = element_blank(),
+        axis.text.y = element_blank(),
+        legend.position="top",
+        legend.key.height = unit(0.6, "cm"),
+        legend.key.size = unit(0.25,"cm"),
+        legend.text = element_text(size=12))
+
+
+
+#scatterplot of BBS richness by BBA richness (well sampled averaged adjacent blocks)
+c<- Sampled_Matched_Ave %>%
+  ggplot(aes(x=BBS_Richness,y=BBA_Richness))+
+  geom_jitter()+
+  geom_errorbar(aes(ymin=BBA_Richness-BBA_Richness_CI,
+                    ymax=BBA_Richness+BBA_Richness_CI),
+                width=0.25,alpha=0.4,
+                position = position_dodge(width = 0.6))+
+  #geom_smooth(method="lm")+
+  geom_abline(intercept=0,slope=1,linetype="dashed")+
+  theme_classic()+
+  coord_cartesian(xlim=c(0,120),ylim=c(0,120))+
+  scale_y_continuous(breaks=seq(0,120,20))+
+  scale_x_continuous(breaks=seq(0,120,20))+
+  labs(x="BBS Local Richness",
+       y="BBA Local Richness",
+       title="Adjacent SUs (<30 hr)")+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"),
+        axis.text.x = element_text(size=14),
+        axis.title = element_blank(),
+        axis.text.y = element_text(size=14))
+
+#by state
+d<- Sampled_Matched_Ave %>%
+  ggplot(aes(x=BBS_Richness,y=BBA_Richness,color=State))+
+  geom_jitter()+
+  geom_errorbar(aes(ymin=BBA_Richness-BBA_Richness_CI,
+                    ymax=BBA_Richness+BBA_Richness_CI),
+                width=0.25,alpha=0.4,
+                position = position_dodge(width = 0.6))+
+  #geom_smooth(method="lm")+
+  geom_abline(intercept=0,slope=1,linetype="dashed")+
+  scale_color_brewer(type="qual",palette=2)+
+  theme_classic()+
+  coord_cartesian(xlim=c(0,120),ylim=c(0,120))+
+  scale_y_continuous(breaks=seq(0,120,20))+
+  scale_x_continuous(breaks=seq(0,120,20))+
+  labs(x="BBS Local Richness",
+       y="BBA Local Richness")+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"),
+        axis.text.x = element_text(size=14),
+        axis.title = element_blank(),
+        axis.text.y = element_blank(),
+        legend.position="none")
+
+#JOINING TOGETHER
+fig4.2<- cowplot::plot_grid(a,b,c,d,
+                           ncol=2,align="hv")+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))
+
+
+#output
+annotate_figure(fig4.2,
+                bottom = text_grob("BBS Local Richness", 
+                                 color = "black",
+                                 face="bold",
+                                 size=16,
+                                 vjust=-0.5),
+                left = text_grob("BBA Local Richness", 
+                                 color = "black",
+                                 face="bold",
+                                 size=16,rot=90,
+                                 vjust=1.5))
+
+
+```
+
+
+```{r Prediction 6 Figure 3, message=FALSE,warning=FALSE,fig.width=9,dpi=300}
+#Another way
+#by state
+e<- Matched_Ave %>%
+  ggplot(aes(x=BBS_Richness,y=BBA_Richness,color=State))+
+  geom_jitter(size=3)+
+  geom_errorbar(aes(ymin=BBA_Richness-BBA_Richness_CI,
+                    ymax=BBA_Richness+BBA_Richness_CI),
+                width=0.25,alpha=0.4,
+                position = position_dodge(width = 0.6))+
+  geom_abline(intercept=0,slope=1,linetype="dashed")+
+  scale_color_brewer(type="qual",palette=2)+
+  theme_classic()+
+  coord_cartesian(xlim=c(0,120),ylim=c(0,120))+
+  scale_y_continuous(breaks=seq(0,120,20))+
+  scale_x_continuous(breaks=seq(0,120,20))+
+  labs(x="BBS Local Richness",
+       y="BBA Local Richness",
+       title="a")+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"),
+        plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_text(size=16),
+        axis.title = element_blank(),
+        axis.text.y = element_text(size=16),
+        legend.position="none",
+        legend.key.height = unit(0.6, "cm"),
+        legend.key.size = unit(0.25,"cm"),
+        legend.text = element_text(size=12))
+
+
+#by state
+f<- Sampled_Matched_Ave %>%
+  ggplot(aes(x=BBS_Richness,y=BBA_Richness,color=State))+
+  geom_jitter(size=3)+
+  geom_errorbar(aes(ymin=BBA_Richness-BBA_Richness_CI,
+                    ymax=BBA_Richness+BBA_Richness_CI),
+                width=0.25,alpha=0.4,
+                position = position_dodge(width = 0.6))+
+  geom_abline(intercept=0,slope=1,linetype="dashed")+
+  scale_color_brewer(type="qual",palette=2)+
+  theme_classic()+
+  coord_cartesian(xlim=c(0,120),ylim=c(0,120))+
+  scale_y_continuous(breaks=seq(0,120,20))+
+  scale_x_continuous(breaks=seq(0,120,20))+
+  labs(x="BBS Local Richness",
+       y="BBA Local Richness",
+       title="b")+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"),
+        plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_text(size=16),
+        axis.title = element_blank(),
+        axis.text.y = element_blank(),
+        legend.position=c(-0.25,1.2)
+        )+
+  guides(colour = guide_legend(nrow = 1))
+
+
+#JOINING TOGETHER
+fig4.3<- cowplot::plot_grid(e,f,
+                           ncol=2,align="hv")+
+  theme(plot.margin = margin(t=0.95,r=0.75,b=0.75,l=1,"cm"))
+
+
+#output
+annotate_figure(fig4.3,
+                bottom = text_grob("BBS Local Richness", 
+                                 color = "black",
+                                 face="bold",
+                                 size=17,
+                                 vjust=-0.5),
+                left = text_grob("BBA Local Richness", 
+                                 color = "black",
+                                 face="bold",
+                                 size=17,rot=90,
+                                 vjust=1.5))
+
+#Scatterplot by most overlap
+# Matched %>%
+#   dplyr::select(BBSID,State,Dataset,Atlas2_Total) %>%
+#   pivot_wider(names_from = Dataset,
+#               values_from = Atlas2_Total) %>%
+#   ggplot(aes(x=BBS,y=BBA))+
+#   geom_jitter(size=2)+
+#   geom_smooth(method="lm")+
+#   geom_abline(intercept=0,slope=1,linetype="dashed")+
+#   theme_classic()+
+#   coord_cartesian(xlim=c(20,120),ylim=c(0,120))+
+#   scale_y_continuous(breaks=seq(0,120,20))+
+#   scale_x_continuous(breaks=seq(20,120,20))+
+#   labs(x="BBS Local Richness",
+#        y="BBA Local Richness")+
+#   theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"),
+#         axis.text.x = element_text(size=16),
+#         axis.title.x = element_text(face="bold",size=17,vjust=-1,hjust=0.5),
+#         axis.text.y = element_text(size=16),
+#         axis.title.y = element_text(face="bold",size=17,vjust=2,hjust=0.5))
+# 
+# 
+# #by State
+# Matched %>%
+#   dplyr::select(BBSID,State,Dataset,Atlas2_Total) %>%
+#   pivot_wider(names_from = Dataset,
+#               values_from = Atlas2_Total) %>%
+#   ggplot(aes(x=BBS,y=BBA,color=State))+
+#   geom_jitter(aes(color=State),size=2)+
+#   geom_smooth(method="lm",se=F)+
+#   geom_abline(intercept=0,slope=1,linetype="dashed")+
+#   scale_color_brewer(type="qual",palette=2)+
+#   theme_classic()+
+#   coord_cartesian(xlim=c(20,120),ylim=c(0,120))+
+#   scale_y_continuous(breaks=seq(0,120,20))+
+#   scale_x_continuous(breaks=seq(20,120,20))+
+#   labs(x="BBS Local Richness",
+#        y="BBA Local Richness",
+#        color=NULL)+
+#   theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"),
+#         axis.text.x = element_text(size=16),
+#         axis.title.x = element_text(face="bold",size=17,vjust=-1,hjust=0.5),
+#         axis.text.y = element_text(size=16),
+#         axis.title.y = element_text(face="bold",size=17,vjust=2,hjust=0.5),
+#         legend.key.height = unit(0.6, "cm"),
+#         legend.background = element_blank(),
+#         legend.key.size = unit(0.25,"cm"),
+#         legend.text = element_text(size=12),
+#         legend.position = "top")
+
+
+```
+
+#### 7) Compositional Turnover would be higher in BBA
+
+Differences between BBA blocks and BBS routes in compositional turnover. a - Mean Jaccard dissimilarity for BBA blocks (green) and BBS routes (orange) for the entire study region (All) and for each state. Error bars are 95% confidence intervals. b - Dispersion of BBA blocks and BBS routes in a two-dimensional NMDS ordination space based on the Jaccard index of dissimilarity.
+
+```{r prediction 7 prep, warning=FALSE, message=FALSE}
+
+#ordination plot
+#loading ordination data
+load("Prediction 7 Ordination.RData")
+
+#calculating ordination % variance explained
+labs <- paste(round(100*prediction7$eig / sum(prediction7$eig), 2), "%")
+
+#only first two eigenvectors
+labs <- labs[1:2]
+
+#output to save
+#labs
+
+#creating dataframe from first two eigenvectors and dataset group
+pred7.data <- cbind.data.frame(prediction7$vectors[,1:2],
+                               prediction7$group)
+
+#Renaming column
+pred7.data <- pred7.data %>%
+  rename(Dataset = `prediction7$group`)
+
+#saving centroids from first two eigenvectors
+centroids <- as.data.frame(prediction7$centroids[,1:2])
+
+centroids <- centroids %>%
+  rename(Centroid1 = PCoA1,
+         Centroid2 = PCoA2) %>%
+  mutate(Dataset=c("BBA","BBS"))
+
+#attaching to other data
+pred.7<-merge.data.frame(pred7.data,centroids)
+
+#checking
+#View(pred.7)
+
+#removing
+rm(pred7.data,centroids,labs)
+
+#creating hull edges
+grp.a <- pred.7[pred.7$Dataset== "BBA", 
+                     ][chull(pred.7[pred.7$Dataset== "BBA",
+                                    c("PCoA1", "PCoA2")]), ]  # hull values for BBA
+
+grp.b <- pred.7[pred.7$Dataset== "BBS", 
+                     ][chull(pred.7[pred.7$Dataset== "BBS",
+                                    c("PCoA1", "PCoA2")]), ]  # hull values for BBS
+
+hull.data <- rbind(grp.a, grp.b)  #combine grp.a and grp.b
+
+#View(hull.data)
+
+#Subsetting only BBA and BBS for these figures
+target <- c("BBA","BBS")
+
+```
+
+
+``` {r Prediction 7 Figures, message=FALSE, warning=FALSE,fig.width=5,fig.height=9,dpi=300}
+
+#Plotting!
+
+a <- Prediction_Figures %>%
+  filter(Dataset %in% target) %>%
+  ggplot(aes(x=Region,y=Mean_Dissimilarity,color=Dataset))+
+  geom_point(size=4,
+             position = position_dodge(width = 0.6))+
+  theme_classic()+
+  scale_color_manual(values= c("chocolate2",
+                               "darkgreen"))+
+  geom_errorbar(aes(ymin=BetaLow.CI,
+                    ymax=BetaUp.CI),
+                position = position_dodge(width = 0.6),
+                width=0.25)+
+  coord_cartesian(ylim=c(0.3,0.7))+
+  scale_y_continuous(breaks=seq(0.3,0.7,0.1))+
+  labs(title="a",
+  y="Dissimilarity",
+  color=NULL)+
+  theme(plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_text(face="bold",size=17),
+        axis.title.x = element_blank(),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=2,hjust=0.5),
+        legend.position = c(0.8,0.8),
+        legend.key.height = unit(0.6, "cm"),
+        legend.key.size = unit(0.25,"cm"),
+        legend.text = element_text(size=12))
+
+#a
+
+#plotting ordination plot
+b <- pred.7 %>%
+  ggplot(aes(x=PCoA1,y=PCoA2,
+             color=Dataset))+
+  geom_point(size=1.5)+
+  scale_color_manual(values=c("chocolate2",
+                              "darkgreen"))+
+  theme_classic()+
+  geom_path(data=hull.data,aes(x=PCoA1,y=PCoA2,
+                         color=Dataset,group=Dataset),
+            size=1)+
+  labs(title="b",
+       x="PCoA1 (19.3%)",
+       y="PCoA2 (10.9%)",
+       fill=NULL,
+  color=NULL)+
+  theme(plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_text(size=16),
+        axis.title.x = element_text(face="bold",size=17,vjust=-1,hjust=0.5),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=2,hjust=0.5),
+        legend.position = c(0.92,0.15),
+        legend.key.height = unit(0.6, "cm"),
+        legend.background = element_blank(),
+        legend.key.size = unit(0.25,"cm"),
+        legend.text = element_text(size=12))
+
+#b
+
+#aligning both figures together
+figure5 <- cowplot::plot_grid(a,b,
+                              ncol=1,
+                              align = "hv")+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))
+
+#output
+figure5
+
+
+#removing
+rm(prediction7,grp.a,grp.b,hull.data,a,b,labs)
+
+```
+
+
+#### 8) Sampling Effort Accounts for Some Differences in Local Richness
+
+Relationships between sampling effort and local richness. a - Effect of log sampling effort on log local richness at the level of the entire study region (outliers of  >300 hours sampling effort were excluded). b - Difference in local richness between matched BBS and BBA observation units regressed against the corresponding differences in sampling effort. 
+
+
+First going to create graph of log sampling effort against log local richness.
+Then we'll create a graph of difference in effort by difference in richness for matched sampling units.
+
+
+```{r Prediction 8 Figure, message=FALSE, warning=FALSE,fig.width=5,fig.height=9,dpi=300}
+
+
+#running model with effort and dataset as predictors of local richness
+
+#Running model that's limited to range of BBS effort (2.5-15 hours)
+
+prediction8.data <- full_d %>%
+  filter(Atlas2_Effort>=2.5 & Atlas2_Effort<=15)
+
+
+prediction8.1 <- glm(Atlas2_Total ~ logEffort*Dataset,
+                       data=prediction8.data, # data
+                       family=poisson) # poisson distribution
+
+predict8 <- predict(prediction8.1,se.fit=T,type="response")
+
+#Function for CIs
+make_ci <- function(pred, data){
+
+# fit, lower, and upper CI
+fit <- pred$fit
+lower <- fit - 1.96*pred$se.fit
+upper <- fit + 1.96*pred$se.fit
+
+return(data.frame(fit, lower, upper, data))
+}
+
+
+my_pred <- make_ci(predict8, prediction8.data)
+
+
+#===
+
+#Creating difference in log richness and log effort columns and subsetting data for test
+prediction8.data1 <- Matched %>%
+  mutate(Richness_Diff = ifelse(BBSID==lag(BBSID),lag(log10(Atlas2_Total))-log10(Atlas2_Total),NA),
+         Effort_Diff = ifelse(BBSID==lag(BBSID),lag(log10(Atlas2_Effort))-log10(Atlas2_Effort),NA)
+                                ) %>%
+    dplyr::select(BBSID,State,Richness_Diff,Effort_Diff) %>%
+  filter(!is.na(Richness_Diff),
+         !is.na(Effort_Diff),
+         Effort_Diff != "-Inf")
+
+#Running GLM
+prediction8.3 <- glmer(Richness_Diff ~ Effort_Diff+(1|State),
+                       data=prediction8.data1)
+
+# pulling predictions from model and confidence intervals
+pred <- cbind(prediction8.data1, 
+              predictInterval(prediction8.3, prediction8.data1)) 
+
+#r-squared
+x=r.squaredGLMM(prediction8.3)
+r2=round(x[1],digits=2)
+
+#intercept
+t=summary(prediction8.3)
+x2=t$coefficients
+intercept=round(x2[1],digits=4)
+
+#slope
+slope=round(x2[2],digits=4)
+
+#--
+
+#plot
+a <- full_d %>%
+  filter(Atlas2_Effort<300) %>% #removing outliers
+  ggplot(aes(x=Atlas2_Effort,y=Atlas2_Total,color=Dataset,fill=Dataset))+
+  geom_point(aes(group=Dataset,
+                 color=Dataset),size=2)+
+  #geom_tile(size=2.5)+
+  geom_line(data=my_pred,aes(Atlas2_Effort, fit),col="black",size=1)+
+  scale_color_manual(values=c("chocolate2",
+                              "darkgreen"))+
+  scale_fill_manual(values=c("chocolate2",
+                              "darkgreen"))+
+  theme_classic()+
+  scale_x_continuous(trans="log10",labels=prettyNum,
+                     breaks=log_breaks())+
+  scale_y_continuous(trans="log10",
+                     labels=prettyNum,
+                     breaks=log_breaks())+
+  #scale_y_continuous(breaks=seq(0,5,1))+
+  #scale_x_continuous(breaks=seq(0,8,2))+
+  labs(title="a",
+       x="Sampling effort (hours)",
+       y="Local richness",
+       fill=NULL,
+       color=NULL)+
+  theme(plot.margin = margin(b=0.5,unit="cm"),
+        plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_text(size=16),
+        axis.title.x = element_text(face="bold",size=17,vjust=-0.5,hjust=0.5),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=2,hjust=0.5),
+        legend.key.height = unit(0.6, "cm"),
+        legend.background = element_blank(),
+        legend.key.size = unit(0.25,"cm"),
+        legend.text = element_text(size=12),
+        legend.position = c(0.9,0.2),
+        legend.title = element_blank())
+#a
+
+#plotting
+b<- pred %>%
+  ggplot(aes(Effort_Diff, Richness_Diff)) + 
+  geom_point(aes(color=State),size=1.5)+
+  scale_color_brewer(type = "qual",palette = 2)+
+  geom_line(aes(Effort_Diff, fit),alpha=0.5)+
+  geom_ribbon(aes(Effort_Diff, ymin = lwr, ymax = upr), alpha = 0.1)+
+  annotate("text",x=0.25,y=-1,
+           label=paste("R^2 == 0.41"),parse=T)+
+  annotate("text",x=0.25,y=-1.15,
+           label=paste("                Y = -0.069+0.146X"))+
+  annotate("text",x=0.25,y=-1.3,
+           label=paste("p < 0.001"),parse=T)+
+  theme_classic()+
+  coord_cartesian(xlim=c(-1.5,2),ylim=c(-1.5,0.5))+
+  scale_y_continuous(breaks=seq(-1.5,0.5,0.5))+
+  scale_x_continuous(breaks=seq(-1.5,2,1))+
+  labs(title="b",
+       x="Difference in log sampling effort",
+       y="Difference in log local richness",
+       color=NULL)+
+  theme(plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_text(size=16),
+        axis.title.x = element_text(face="bold",size=17,vjust=-1,hjust=0.5),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=2,hjust=0.5),
+        legend.key.height = unit(0.6, "cm"),
+        legend.background = element_blank(),
+        legend.key.size = unit(0.25,"cm"),
+        legend.text = element_text(size=12),
+        legend.position = c(0.9,0.3))
+
+
+
+#b
+
+
+#===
+
+
+#Putting graphs together
+figure6 <- cowplot::plot_grid(a,b,ncol=1,
+                              align="hv")+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))
+
+figure6
+
+
+
+#removing
+rm(a,b,my_pred,pred,predict8,prediction8.1,prediction8.3,prediction8.data,prediction8.data1,
+   t,x,x2,slope,intercept,r2)
+
+
+
+
+
+```
+
+###### Showing effect of sampling effort plateau at 30hr of sampling
+
+```{r Figure S3, message=FALSE, warning=FALSE,dpi=300}
+
+#Graphing richness against effort with line from regression
+
+fit <- lm(Atlas2_Total ~ Atlas2_Effort,
+          data=SampledFull)
+
+pred <- cbind(SampledFull, predict(fit, SampledFull,interval="confidence")) 
+
+
+richness <- full_d %>%
+  filter(Atlas2_Effort<300)%>%
+  ggplot(aes(x=Atlas2_Effort,y=Atlas2_Total))+
+  geom_point()+
+  geom_line(data=pred,aes(Atlas2_Effort, fit))+
+  geom_ribbon(data=pred,aes(Atlas2_Effort, ymin = lwr, ymax = upr), alpha = 0.2)+
+  theme_classic()+
+    coord_cartesian(ylim=c(0,130),xlim=c(0,300))+
+  scale_y_continuous(breaks=seq(0,130,25))+
+  labs(x="Sampling effort (hours)",
+       y="Local richness")+
+  theme(axis.text.x = element_text(size=16),
+        axis.title.x = element_text(face="bold",size=17,vjust=-0.5,hjust=0.5),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=2,hjust=0.5))
+
+richness
+
+#Graphing reduced slope from regression
+
+eff <-Effort %>%
+  ggplot(aes(x=Threshold,y=Slope))+
+  geom_point(col="firebrick4",size=2)+
+  theme_bw()+
+  labs(x="Threshold for sampling effort",
+       y="Regression slope")+
+  coord_cartesian(ylim=c(0,0.4))+
+  scale_y_continuous(breaks=seq(0,0.4,0.1))+
+  theme(axis.title = element_text(size=10,face="bold"),
+        axis.text = element_text(size=8),
+        axis.title.y = element_text(vjust=2))
+
+eff
+
+#output together with inset
+richness+ theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))+
+annotation_custom(ggplotGrob(eff),
+                              xmin = 170, ymin = -5,
+                              xmax = 300,ymax=45)
+
+
+#removing
+rm(eff,richness,fit,pred)
+
+```
+
+
+##### Figure S5 - Mean Difference Richness by Mean Difference Effort
+
+
+**Ad-Hoc 7** - To test state differences in local richness, we regressed mean difference in local richess between BBA and BBS sampling units against the mean difference in local effort for each state (this is folded into Main Prediction 8)  
+
+
+```{r Figure S5,message=FALSE,warning=FALSE,fig.width=5,fig.height=4,dpi=300}
+
+#Creating summary table with difference columns in richness and effort
+summary_table8 <- full_d %>%
+  filter(logEffort!="-Inf") %>%
+  group_by(Dataset,State) %>% #grouping by dataset and state
+  summarize(mean_richness = mean(logRichness,na.rm=T),
+            mean_effort = mean(logEffort,na.rm=T)) %>%
+  pivot_wider(names_from = Dataset,
+              values_from = c(mean_richness,mean_effort))%>%
+  mutate(richness_difference = mean_richness_BBA - mean_richness_BBS,
+         effort_difference = mean_effort_BBA - mean_effort_BBS)%>%
+  dplyr::select(State,richness_difference,effort_difference)
+              
+
+#Now running GLM with difference mean richness as response and difference mean effort as predictor
+prediction8.5 <- glm(richness_difference ~ effort_difference,
+                     data=summary_table8)
+
+#r-squared
+x3=rsq(prediction8.5,adj=T)
+r2=round(x3[1],digits=2)
+
+#intercept
+x4=prediction8.5$coefficients
+intercept=round(x4[1],digits=4)
+
+#slope
+slope=round(x4[2],digits=4)
+
+
+#fitted predictions and CIs
+predict8.5 <- predict.glm(prediction8.5,se.fit=T,type="link")
+
+#Function for CIs
+make_ci <- function(pred, data){
+
+# fit, lower, and upper CI
+fit <- pred$fit
+lower <- fit - 1.96*pred$se.fit
+upper <- fit + 1.96*pred$se.fit
+
+return(data.frame(fit, lower, upper, data))
+}
+
+my_pred <- make_ci(predict8.5, summary_table8)
+
+
+#Plotting Means by State
+figure.s5 <- my_pred %>%
+  ggplot(aes(x=effort_difference,y=richness_difference))+
+  geom_point(size=4,aes(color=State))+
+  geom_line(aes(x = effort_difference, y = fit))+
+  scale_color_brewer(type = "qual",palette = 2)+
+  geom_ribbon(aes(effort_difference, ymin = lower, ymax = upper), alpha = 0.05,colour = NA)+
+  geom_text(aes(effort_difference,richness_difference,label=State),size=4,vjust=-2)+
+  annotate("text",x=1.1,y=-0.4,
+           label=paste("R^2 == 0.86"),parse=T)+
+  annotate("text",x=1.1,y=-0.5,
+           label=paste("                Y = -0.408+0.309X"))+
+  annotate("text",x=1.1,y=-0.6,
+           label=paste("p = 0.015"))+
+  # geom_label(aes(x=1.25,y=-0.4,
+  #                label=paste("R2=",r2,"\ny=",intercept,"+",slope,"* Mean Difference in Effort")),
+  #            col="black",
+  #            label.size=NA)+
+  theme_classic()+
+  labs(x="Mean difference sampling effort",
+       y="Mean difference local richness")+
+  scale_x_continuous(breaks=seq(-0.7,2,0.5))+
+  theme(legend.position = "none",
+        axis.text.x = element_text(size=16),
+        axis.title.x = element_text(face="bold",size=17,vjust=-0.5,hjust=0.5),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=2,hjust=0.5),
+        plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))
+
+#output
+figure.s5
+
+#removing 
+rm(summary_table8,prediction8.5,x3,r2,x4,slope,intercept,my_pred,predict8.5)
+
+
+```
+
+
+***
+
+## Ad-hoc Analyses  
+
+
+#### 2) Rareness explains BBS absence
+
+```{r Rareness Figure, message=FALSE, warning=FALSE, dpi=300,fig.width=5,fig.height=4}
+
+#binning by commonness categories
+
+rareness %>%
+  mutate(Commonness = ifelse(Rareness>=1 & Rareness <=20,
+                             "1-20",
+                             ifelse(Rareness>=21 & Rareness <=40,
+                             "21-40",
+                             ifelse(Rareness>=41 & Rareness <=80,
+                             "41-80",
+                             ifelse(Rareness>=81 & Rareness <=160,
+                             "81-160",
+                             ifelse(Rareness>=161 & Rareness <=320,
+                             "161-320",
+                             ifelse(Rareness>=321 & Rareness <=640,
+                             "321-640",
+                             ifelse(Rareness >640,">640",NA)))))))) %>%
+  mutate(Commonness= factor(Commonness,
+                            levels=c("1-20","21-40","41-80",
+                                     "81-160",
+                                     "161-320",
+                                     "321-640",
+                                     ">640"))) %>%
+  group_by(Commonness) %>%
+  summarize(Absence = 100-(sum(BBS_Presence) / n())*100 ) %>%
+  arrange(Commonness) %>%
+  ggplot(aes(x=Commonness,y=Absence))+
+  geom_bar(stat="identity",position=position_dodge(width=0.9),
+           fill="grey59")+
+  theme_classic()+
+  coord_cartesian(ylim=c(0,100))+
+  scale_y_continuous(breaks=seq(0,100,20))+
+  labs(x="Commonness (# BBA blocks)",
+       y="Absence in BBS (%)")+
+  theme(axis.text.x = element_text(size=16,angle=90,vjust=0.5,
+                                   hjust=0.5),
+        axis.title.x = element_text(face="bold",size=17,vjust=-0.5,hjust=0.5),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=2,hjust=0.5),
+        plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))
+  
+  
+
+```
+
+
+
+#### 3) Local environmental heterogeneity will correlate with local species richness
+
+Effect of land cover richness (a) and land cover diversity (b) on local breeding bird richness in BBS routes and BBA blocks in the entire study region.
+
+```{r Figure S1 prep,message=FALSE, warning=FALSE}
+
+#data
+predicts1.data <- full_d %>%
+  dplyr::select(Dataset,Het_Count2006,Shannon2006,Atlas2_Total) %>%
+  filter(!is.na(Het_Count2006),
+         !is.na(Shannon2006))
+
+
+#running model on land-cover richness
+assumption.landrich <- glm(Atlas2_Total ~ Het_Count2006
+                             + as.factor(Dataset),
+                             data=predicts1.data,
+                             family=poisson)
+
+
+#predictions from model fit to then graph
+predicts1<- predict.glm(assumption.landrich,se.fit=T,type="response")
+
+#Function for CIs
+make_ci <- function(pred, data){
+
+# fit, lower, and upper CI
+fit <- pred$fit
+lower <- fit - 1.96*pred$se.fit
+upper <- fit + 1.96*pred$se.fit
+
+return(data.frame(fit, lower, upper, data))
+}
+
+#save data
+my_pred <- make_ci(predicts1, predicts1.data)
+
+
+#running model on land-cover diversity
+assumption.landdiv <- glm(Atlas2_Total ~ Shannon2006
+                             + as.factor(Dataset),
+                             data=predicts1.data,
+                             family=poisson)
+
+
+#predictions from model fit to then graph
+predicts1b <- predict.glm(assumption.landdiv,se.fit=T,type="response")
+
+#save data
+my_pred.b <- make_ci(predicts1b, predicts1.data)
+
+
+
+```
+
+
+``` {r Figure S1,message=FALSE, warning=FALSE,fig.width=5,fig.height=9,dpi=300}
+
+#---
+
+#plot
+a<- my_pred %>%
+  ggplot(aes(x=Het_Count2006,y=Atlas2_Total,group=Dataset,color=Dataset,fill=Dataset))+
+  geom_point(aes(group=Dataset,
+                 color=Dataset),size=2)+
+  geom_line(aes(x = Het_Count2006, y = fit),col="black",size=1.25)+
+  theme_classic()+
+  scale_color_manual(values=c("chocolate2",
+                              "darkgreen"))+
+  scale_y_continuous(breaks=seq(0,130,30))+
+  scale_x_continuous(breaks=seq(0,15,3))+
+  labs(title="a",
+       x="Land-cover richness",
+       y="Local richness",
+  color=NULL,
+  fill=NULL)+
+  theme(plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_text(size=16),
+        axis.title.x = element_text(face="bold",size=17,vjust=-0.5,hjust=0.5),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=2,hjust=0.5),
+        legend.key.height = unit(0.6, "cm"),
+        legend.background = element_blank(),
+        legend.key.size = unit(0.5,"cm"),
+        legend.text = element_text(size=12),
+        legend.position = c(0.15,0.9),
+        legend.title = element_blank())
+
+#a
+
+#plot
+b<-my_pred.b %>%
+  ggplot(aes(x=Shannon2006,y=Atlas2_Total,group=Dataset,color=Dataset,fill=Dataset))+
+  geom_point(aes(group=Dataset,
+                 color=Dataset),size=2)+
+  geom_line(aes(x = Shannon2006, y = fit),col="black",size=1.25)+
+  theme_classic()+
+  scale_color_manual(values=c("chocolate2",
+                              "darkgreen"))+
+  scale_y_continuous(breaks=seq(0,130,30))+
+  scale_x_continuous(breaks=seq(0,2.5,0.5))+
+  labs(title="b",
+       x="Land-cover diversity",
+       y="Local richness",
+  color=NULL,
+  fill=NULL)+
+  theme(plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_text(size=16),
+        axis.title.x = element_text(face="bold",size=17,vjust=-0.5,hjust=0.5),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=2,hjust=0.5),
+        legend.position = "none")
+
+
+#b
+
+#putting together
+figure.s1<- cowplot::plot_grid(a,b,ncol=1,
+                               align="hv")+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))
+  
+
+#output
+figure.s1
+  
+#removing
+rm(a,b,r2.c,r2.m,assumption.landdiv,assumption.landrich, predicts1,predicts1b,predicts1.data,my_pred,my_pred.b)
+
+```
+
+
+
+
+#### 4) BBA Blocks will have higher compositional turnover even after matching geography and sample size
+
+Differences between BBS routes and geographically matched BBA blocks in (a) species compositional turnover quantified using the Jaccard index of dissimilarity; (b) land-cover similarity quantified using the Bray-Curtis measure of similarity; and (c) environmental similarity based on land-cover composition, elevation, precipitation, and temperature, quantified using the Gower index of similarity. Error bars indicate 95% confidence levels.
+
+```{r Ad-Hoc4 Prep}
+
+#subsetting species to create Jaccard distances per dataset
+species <- c(14:291)
+
+#BBS
+Ad.hoc4.BBS <- Matched %>%
+  filter(Dataset=="BBS") %>%
+  dplyr::select(species) %>%
+  vegdist(.,method="jaccard",binary=T)
+
+#Mean and 95% CIs
+Ad.hoc4.BBS <- MeanCI(Ad.hoc4.BBS,conf.level = 0.95)
+
+#BBA
+Ad.hoc4.BBA <- Matched %>%
+  filter(Dataset=="BBA") %>%
+  dplyr::select(species) %>%
+  vegdist(.,method="jaccard",binary=T)
+
+#Mean and 95% CIs
+Ad.hoc4.BBA <- MeanCI(Ad.hoc4.BBA,conf.level = 0.95)
+
+#Joining into data and cleaning format
+Ad.hoc4.data <- as.data.frame(cbind(Ad.hoc4.BBA,Ad.hoc4.BBS)) %>%
+  rename(BBA = Ad.hoc4.BBA,
+         BBS = Ad.hoc4.BBS) %>%
+  pivot_longer(c("BBA":"BBS"),
+               names_to = "Dataset",
+               values_to = "Value") %>%
+  group_by(Dataset) %>%
+  mutate(Mean_Dissimilarity = Value[c(NA,1,NA)],
+         Low.CI = Value[c(NA,2,NA)],
+         Up.CI = Value[c(NA,3,NA)]) %>%
+  filter(!is.na(Mean_Dissimilarity),!is.na(Low.CI),!is.na(Up.CI)) %>%
+  dplyr::select(-Value)
+
+#removing unnecessary
+rm(Ad.hoc4.BBA,Ad.hoc4.BBS,species)
+
+
+#===
+
+#subsetting land-cover types for Bray-Curtis Similarity comparison (double-check column numbers)
+land <-c(320:334)
+
+#BBS
+land.bs.bray=Matched %>%
+  filter(Dataset=="BBS") %>%
+  dplyr::select(land) %>%
+  vegdist(.,method="bray",na.rm=T)
+
+land.bs.bray <- as.vector(land.bs.bray)
+land.bs.bray <- 1-land.bs.bray #similarity
+land.bs.bray <- MeanCI(land.bs.bray,conf.level = 0.95)
+land.bs.bray <- as.data.frame(land.bs.bray) %>% 
+  rename(BBS = land.bs.bray)
+
+#BBA
+land.ba.bray=Matched %>%
+  filter(Dataset=="BBA") %>%
+  dplyr::select(land) %>%
+  vegdist(.,method="bray",na.rm=T)
+
+land.ba.bray <- as.vector(land.ba.bray)
+land.ba.bray <- na.omit(land.ba.bray)#remove NAs
+land.ba.bray <- 1-land.ba.bray #similarity
+land.ba.bray <- MeanCI(land.ba.bray,conf.level = 0.95)
+land.ba.bray <- as.data.frame(land.ba.bray) %>% 
+  rename(BBA = land.ba.bray)
+
+#Joining as dataset and pivoting
+Ad.hoc4.data2 <- as.data.frame(cbind(land.ba.bray,land.bs.bray)) %>%
+  pivot_longer(c("BBA":"BBS"),
+               names_to = "Dataset",
+               values_to = "Value") %>%
+  group_by(Dataset) %>%
+  mutate(Mean_Similarity = Value[c(NA,1,NA)],
+         Low.CI = Value[c(NA,2,NA)],
+         Up.CI = Value[c(NA,3,NA)]) %>%
+  filter(!is.na(Mean_Similarity),!is.na(Low.CI),!is.na(Up.CI)) %>%
+  dplyr::select(-Value)
+
+#removing unnecessary
+rm(land.ba.bray,land.bs.bray,land)
+
+
+#===
+
+#Gower multivariate similarity index on precipitation, temperature, elevation, and land-cover
+
+#BBS
+bs.gower <- Matched %>%
+  filter(Dataset=="BBS") %>%
+  dplyr::select(Shannon2006,Elev_Mean,Precipitation,Temp) %>%
+  vegdist(.,method="gower",na.rm=T)
+
+bs.gower <- as.vector(bs.gower)
+bs.gower <- MeanCI(bs.gower,conf.level = 0.95) #mean and CIs
+bs.gower<- as.data.frame(bs.gower)
+
+#BBA
+ba.gower <- Matched %>%
+  filter(Dataset=="BBA") %>%
+  dplyr::select(Shannon2006,Elev_Mean,Precipitation,Temp) %>%
+  vegdist(.,method="gower",na.rm=T)
+
+ba.gower <- as.vector(ba.gower)
+ba.gower <- MeanCI(ba.gower,conf.level = 0.95) #mean and CIs
+ba.gower<- as.data.frame(ba.gower)
+
+
+#Joining into data and cleaning format
+Ad.hoc4.data3 <- as.data.frame(cbind(ba.gower,bs.gower)) %>%
+  rename(BBA = ba.gower,
+         BBS = bs.gower) %>%
+  pivot_longer(c("BBA":"BBS"),
+               names_to = "Dataset",
+               values_to = "Value") %>%
+  group_by(Dataset) %>%
+  mutate(Mean_Gower = Value[c(NA,1,NA)],
+         Low.CI = Value[c(NA,2,NA)],
+         Up.CI = Value[c(NA,3,NA)]) %>%
+  filter(!is.na(Mean_Gower),!is.na(Low.CI),!is.na(Up.CI)) %>%
+  dplyr::select(-Value)
+
+#removing unnecessary
+rm(ba.gower,bs.gower)
+
+```
+
+
+```{r Figure S2, message=FALSE, warning=FALSE, fig.width=5, fig.height=9,dpi=300}
+
+#Plotting
+
+#First plot
+a <- Ad.hoc4.data %>%
+  ggplot(aes(x=Dataset,y=Mean_Dissimilarity,color=Dataset))+
+  geom_point(size=4,
+             position=position_dodge(width=0.6))+
+  theme_classic()+
+  scale_color_manual(values=c("chocolate2",
+                              "darkgreen"))+
+  geom_errorbar(aes(ymin=Low.CI,
+                    ymax=Up.CI),
+                position=position_dodge(width=0.6),
+                width=0.25)+
+  coord_cartesian(ylim=c(0.4,0.55))+
+  scale_y_continuous(breaks=seq(0.4,0.55,0.1))+
+  labs(title="a",
+       y="Compositional turnover",
+  color=NULL)+
+  theme(plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+        legend.position = c(0.6,0.9),
+        legend.key.height = unit(0.6, "cm"),
+        legend.key.size = unit(0.25,"cm"),
+        legend.text = element_text(size=12),
+        plot.margin = margin(b=0.5,unit="cm"))
+
+#a
+
+#Second plot
+b<- Ad.hoc4.data2 %>%
+  ggplot(aes(x=Dataset,y=Mean_Similarity,color=Dataset))+
+  geom_point(size=4,
+             position=position_dodge(width=0.6))+
+  theme_classic()+
+  scale_color_manual(values=c("chocolate2",
+                              "darkgreen"))+
+  geom_errorbar(aes(ymin=Low.CI,
+                    ymax=Up.CI),
+                position=position_dodge(width=0.6),
+                width=0.25)+
+  coord_cartesian(ylim=c(0.4,0.6))+
+  scale_y_continuous(breaks=seq(0.4,0.6,0.1))+
+  labs(title="b",
+       y="Land-cover similarity",
+  color=NULL)+
+  theme(plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+        legend.position = "none",
+        plot.margin = margin(b=0.5,unit="cm"))
+
+#b
+
+#Third plot
+c <- Ad.hoc4.data3 %>%
+  ggplot(aes(x=Dataset,y=Mean_Gower,color=Dataset))+
+  geom_point(size=4,
+             position=position_dodge(width=0.6))+
+  theme_classic()+
+  scale_color_manual(values=c("chocolate2",
+                              "darkgreen"))+
+  geom_errorbar(aes(ymin=Low.CI,
+                    ymax=Up.CI),
+                position=position_dodge(width=0.6),
+                width=0.25)+
+  coord_cartesian(ylim=c(0.21,0.24))+
+  scale_y_continuous(breaks=seq(0.21,0.24,0.01))+
+  labs(title="c",
+       y="Environmental similarity",
+  color=NULL)+
+  theme(plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_text(face="bold",size=17),
+        axis.title.x = element_blank(),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+        legend.position = "none",
+        plot.margin = margin(b=0.5,unit="cm"))
+#c
+
+
+#Joining all together
+
+figure.s2 <- cowplot::plot_grid(a,b,c,ncol=1,
+                                align="hv")+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))
+
+#output
+figure.s2
+
+#removing
+
+#rm(a,b,c,Ad.hoc4.data,Ad.hoc4.data2,Ad.hoc4.data3)
+
+```
+
+
+
+##### Ordination Plot for Geographic Matched Sampling Units
+
+```{r Ad-Hoc4 Ordination Plot, message=FALSE, warning=FALSE,fig.width=5, fig.height=4, dpi=300}
+
+#loading
+load("Ad-Hoc 4 Ordination.RData")
+
+#calculating ordination % variance explained
+labs <- paste( round(100*ad.hoc4$eig / sum(ad.hoc4$eig), 2), "%")
+
+#only first two eigenvectors
+labs <- labs[1:2]
+
+#creating dataframe from first two eigenvectors and dataset group
+pred4.data <- cbind.data.frame(ad.hoc4$vectors[,1:2],
+                               ad.hoc4$group)
+
+#Renaming column
+pred4.data <- pred4.data %>%
+  rename(Dataset = `ad.hoc4$group`)
+
+#saving centroids from first two eigenvectors
+centroids <- as.data.frame(ad.hoc4$centroids[,1:2])
+
+centroids <- centroids %>%
+  rename(Centroid1 = PCoA1,
+         Centroid2 = PCoA2) %>%
+  mutate(Dataset=c("BBA","BBS"))
+
+#attaching to other data
+pred.4<-merge.data.frame(pred4.data,centroids)
+
+#checking
+#View(pred.4)
+
+#removing
+rm(pred4.data,centroids)
+
+#creating hull edges
+grp.a <- pred.4[pred.4$Dataset== "BBA", 
+                     ][chull(pred.4[pred.4$Dataset== "BBA",
+                                    c("PCoA1", "PCoA2")]), ]  # hull values for BBA
+
+grp.b <- pred.4[pred.4$Dataset== "BBS", 
+                     ][chull(pred.4[pred.4$Dataset== "BBS",
+                                    c("PCoA1", "PCoA2")]), ]  # hull values for BBS
+
+hull.data <- rbind(grp.a, grp.b)  #combine grp.a and grp.b
+
+#View(hull.data)
+
+#plotting ordination plot
+ordination.plot <- pred.4 %>%
+  ggplot(aes(x=PCoA1,y=PCoA2,
+             color=Dataset,shape=Dataset,fill=Dataset))+
+  geom_path(data=hull.data,aes(x=PCoA1,y=PCoA2,
+                         color=Dataset,group=Dataset),
+            size=1)+
+  geom_point()+
+  scale_shape_manual(values=c(17,25))+
+  scale_color_manual(values=c("chocolate2",
+                              "darkgreen"))+
+  scale_fill_manual(values=c("chocolate2",
+                              "darkgreen"))+
+  theme_classic()+
+  labs(x="PCoA1 (25.37%)",
+       y="PCoA2 (8.36%)",
+  color=NULL,
+  shape=NULL,
+  fill=NULL)+
+  theme(axis.text.x = element_text(size=16),
+        axis.title.x = element_text(face="bold",size=17,vjust=-1,hjust=0.5),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=2,hjust=0.5),
+        legend.position = c(0.1,0.15),
+        legend.key.height = unit(0.6, "cm"),
+        legend.background = element_blank(),
+        legend.key.size = unit(0.25,"cm"),
+        legend.text = element_text(size=12),
+        plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))
+  
+
+ordination.plot
+
+
+#removing
+rm(ad.hoc4,pred.4,grp.a,grp.b,hull.data,a,b,labs)
+
+
+```
+
+
+
+#### 5) BBA samples different environmental conditions due to geography
+
+Will graph distribution of precipitation and temperature for the whole region and for each state by Dataset.
+
+Then will graph distribution of land-cover types among BBS routes and BBA blocks in each state and for the entire region.
+
+**Environmental distributions by dataset**
+
+```{r Environmental Distributions Entire Region, message=FALSE, warning=FALSE,fig.width=5,fig.height=9,dpi=300}
+
+## Mean Annual Precipitation
+a<- full_d %>%
+  ggplot(aes(x=Precipitation,group=Dataset,fill=Dataset))+
+  geom_histogram(aes(y=c(..count..[..group..==1]/sum(..count..[..group..==1]),
+                         ..count..[..group..==2]/sum(..count..[..group..==2]))*100),
+                 alpha=0.6,position="identity")+
+  theme_classic()+
+  labs(title="a",
+       x="Mean annual precipitation (mm)",
+       y="Frequency (%)",
+       fill=NULL)+
+  scale_fill_manual(values=c("chocolate2",
+                             "darkgreen"),
+                    labels=c("BBA","BBS"))+
+    theme(plot.title=element_text(size=18,face="bold"),
+          axis.text.x = element_text(size=16),
+          axis.title.x = element_text(face="bold",size=17,vjust=-0.5,hjust=0.5),
+          axis.text.y = element_text(size=16),
+          axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+          legend.key.height = unit(0.6, "cm"),
+          legend.key.size = unit(0.5,"cm"),
+          legend.text = element_text(size=12),
+          legend.position=c(0.8,0.8),
+          plot.margin = margin(b=0.5,unit="cm"))
+
+#a
+
+
+## Mean Summer Temperature
+b<- full_d %>%
+  ggplot(aes(x=Temp,group=Dataset,fill=Dataset))+
+  geom_histogram(aes(y=c(..count..[..group..==1]/sum(..count..[..group..==1]),
+                         ..count..[..group..==2]/sum(..count..[..group..==2]))*100),
+                 alpha=0.6,position="identity")+
+  theme_classic()+
+  labs(title="b",
+       x="Mean summer temperature (°C)",
+       y="Frequency (%)",
+       fill=NULL)+
+  scale_fill_manual(values=c("chocolate2",
+                             "darkgreen"),
+                    labels=c("BBA","BBS"))+
+    theme(plot.title=element_text(size=18,face="bold"),
+          axis.text.x = element_text(size=16),
+          axis.title.x = element_text(face="bold",size=17,vjust=-0.5,hjust=0.5),
+          axis.text.y = element_text(size=16),
+          axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+          legend.position="none")
+
+#b
+
+#Joining together
+
+figure.s4<- cowplot::plot_grid(a,b,ncol=1,
+                               align="hv")+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))
+
+#output
+figure.s4
+
+
+#removing unnecessary
+rm(a,b)
+
+```
+
+
+
+**Environmental distributions by dataset and state**
+
+
+```{r Environmental Distributions by State,message=FALSE, warning=FALSE,dpi=300}
+
+#Plotting by each state
+
+#elevation
+full_d %>%
+  ggplot(aes(x=Elev_Mean,group=Dataset,fill=Dataset))+
+  geom_histogram(aes(y=..density..),
+                 alpha=0.6,position="identity")+
+  theme_classic()+
+  facet_wrap(~State)+
+  labs(x="Mean elevation (m)",
+       y="Density",
+       fill=NULL)+
+  scale_fill_manual(values=c("chocolate2",
+                             "darkgreen"),
+                    labels=c("BBA","BBS"))+
+    theme(plot.title=element_text(size=18,face="bold"),
+          axis.text.x = element_text(size=10),
+          axis.title.x = element_text(face="bold",size=17,vjust=-0.5,hjust=0.5),
+          axis.text.y = element_text(size=12),
+          axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+          legend.key.height = unit(0.6, "cm"),
+          legend.key.size = unit(0.5,"cm"),
+          legend.text = element_text(size=12),
+          legend.position="top",
+          plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))
+
+#precipitation
+full_d %>%
+  ggplot(aes(x=Precipitation,group=Dataset,fill=Dataset))+
+  geom_histogram(aes(y=..density..),
+                 alpha=0.6,position="identity")+
+  theme_classic()+
+  facet_wrap(~State)+
+  labs(x="Mean annual precipitation (mm)",
+       y="Density",
+       fill=NULL)+
+  scale_fill_manual(values=c("chocolate2",
+                             "darkgreen"),
+                    labels=c("BBA","BBS"))+
+    theme(plot.title=element_text(size=18,face="bold"),
+          axis.text.x = element_text(size=10),
+          axis.title.x = element_text(face="bold",size=17,vjust=-0.5,hjust=0.5),
+          axis.text.y = element_text(size=12),
+          axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+          legend.key.height = unit(0.6, "cm"),
+          legend.key.size = unit(0.5,"cm"),
+          legend.text = element_text(size=12),
+          legend.position="top",
+          plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))
+
+#temperature
+full_d %>%
+  ggplot(aes(x=Temp,group=Dataset,fill=Dataset))+
+ geom_histogram(aes(y=..density..),
+                 alpha=0.6,position="identity")+
+  theme_classic()+
+  facet_wrap(~State)+
+  labs(x="Mean summer temperature (°C)",
+       y="Density",
+       fill=NULL)+
+  scale_fill_manual(values=c("chocolate2",
+                             "darkgreen"),
+                    labels=c("BBA","BBS"))+
+    theme(plot.title=element_text(size=18,face="bold"),
+          axis.text.x = element_text(size=10),
+          axis.title.x = element_text(face="bold",size=17,vjust=-0.5,hjust=0.5),
+          axis.text.y = element_text(size=12),
+          axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+          legend.key.height = unit(0.6, "cm"),
+          legend.key.size = unit(0.5,"cm"),
+          legend.text = element_text(size=12),
+          legend.position="top",
+          plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))
+
+```
+
+
+
+**Land Cover Types**
+
+```{r Figure S6, message=FALSE,dpi=300,warning=FALSE}
+
+#Land Cover Types
+
+#Creating dataset that will sum and get percentages for land-classes for each dataset
+positions <-c(2,318:332)
+
+#Forming data of proportions for region
+boo <- full_d %>%
+  filter(!is.na(Water2006)) %>%
+  dplyr::select(positions) %>%
+  group_by(Dataset) %>%
+  dplyr::summarize_all(sum,na.rm=T) %>%
+  mutate(total = rowSums(select_if(., is.numeric))) %>%
+  pivot_longer(c("Water2006_Per":"Herb_Wet2006_Per"),
+               names_to = "Land_Use",
+               values_to = "Sum") %>%
+  mutate(Percent_Cover = Sum / total)
+
+
+#Creating dataset by state
+positions1 <-c(2:3,318:332)
+
+#Forming data of proportions per state
+boo1 <- full_d %>%
+  filter(!is.na(Water2006)) %>%
+  dplyr::select(positions1) %>%
+  group_by(Dataset,State) %>%
+  dplyr::summarize_each(funs(sum)) %>%
+  pivot_longer(c("Water2006_Per":"Herb_Wet2006_Per"),
+               names_to = "Land_Use",
+               values_to = "Sum") %>%
+  group_by(Dataset,State) %>%
+  mutate(total = sum(Sum),
+         Percent_Cover = Sum / total)
+
+#---
+
+#Plotting
+#entire region
+a<-boo %>%
+  ggplot(
+    aes(x=Dataset,y=Percent_Cover,
+             group=factor(Land_Use,
+                      levels=c("Water2006_Per","Barren2006_Per","Shrub2006_Per",
+                               "Grassland2006_Per","Pasture2006_Per","Crops2006_Per",
+                               "Deciduous2006_Per","Evergreen2006_Per","Mixed_Forest2006_Per",
+                               "Woody_Wet2006_Per","Herb_Wet2006_Per",
+                               "Dev_Open2006_Per","Dev_Low2006_Per",
+                               "Dev_Med2006_Per","Dev_High2006_Per")),
+             fill=factor(Land_Use,
+                      levels=c("Water2006_Per","Barren2006_Per","Shrub2006_Per",
+                               "Grassland2006_Per","Pasture2006_Per","Crops2006_Per",
+                               "Deciduous2006_Per","Evergreen2006_Per","Mixed_Forest2006_Per",
+                               "Woody_Wet2006_Per","Herb_Wet2006_Per",
+                               "Dev_Open2006_Per","Dev_Low2006_Per",
+                               "Dev_Med2006_Per","Dev_High2006_Per")))
+         )+
+  geom_bar(stat="identity",position="stack")+
+  theme_classic()+
+  scale_fill_manual(labels=c("Water","Barren","Shrub","Grass","Pasture","Crops",
+                            "Deciduous","Evergreen","Mixed Forest",
+                            "Woody Wetland","Herbaceous Wetland",
+                            "Open Land","Low Residence",
+                            "Medium Residence","High Residence"),
+                     values=c("blue","cornsilk","darkseagreen1","chartreuse",
+                              "darkgoldenrod1","brown",
+                              "darkolivegreen3","darkgreen","darkolivegreen4",
+                              "darkkhaki","cyan3",
+                              "deeppink","deeppink2","deeppink3","deeppink4"))+
+labs(title="a",
+       y="Proportion in dataset",
+       fill=NULL)+
+  scale_y_continuous(breaks=seq(0,1,0.5))+
+  theme(plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_text(angle=90,size=12),
+        axis.text.y = element_text(size=14,face="bold"),
+        axis.title=element_blank(),
+        legend.position="bottom",
+        legend.key.size = unit(0.6,"cm"),
+        legend.title = element_blank(),
+        legend.text = element_text(size=10))+
+  coord_flip()
+
+
+#By Each State
+b<-boo1 %>%
+  ggplot(
+    aes(x=State,y=Percent_Cover,
+             group=factor(Land_Use,
+                      levels=c("Water2006_Per","Barren2006_Per","Shrub2006_Per",
+                               "Grassland2006_Per","Pasture2006_Per","Crops2006_Per",
+                               "Deciduous2006_Per","Evergreen2006_Per","Mixed_Forest2006_Per",
+                               "Woody_Wet2006_Per","Herb_Wet2006_Per",
+                               "Dev_Open2006_Per","Dev_Low2006_Per",
+                               "Dev_Med2006_Per","Dev_High2006_Per")),
+             fill=factor(Land_Use,
+                      levels=c("Water2006_Per","Barren2006_Per","Shrub2006_Per",
+                               "Grassland2006_Per","Pasture2006_Per","Crops2006_Per",
+                               "Deciduous2006_Per","Evergreen2006_Per","Mixed_Forest2006_Per",
+                               "Woody_Wet2006_Per","Herb_Wet2006_Per",
+                               "Dev_Open2006_Per","Dev_Low2006_Per",
+                               "Dev_Med2006_Per","Dev_High2006_Per")))
+         )+
+  geom_bar(stat="identity",position="stack")+
+  theme_classic()+
+   scale_fill_manual(labels=c("Water","Barren","Shrub","Grass","Pasture","Crops",
+                            "Deciduous","Evergreen","Mixed Forest",
+                            "Woody Wetland","Herbaceous Wetland",
+                            "Open Land","Low Residence",
+                            "Medium Residence","High Residence"),
+                     values=c("blue","cornsilk","darkseagreen1","chartreuse",
+                              "darkgoldenrod1","brown",
+                              "darkolivegreen3","darkgreen","darkolivegreen4",
+                              "darkkhaki","cyan3",
+                              "deeppink","deeppink2","deeppink3","deeppink4"))+
+labs(title="b",
+     x="State",y="Proportion in dataset",
+     fill=NULL)+
+  facet_wrap(~Dataset)+
+  scale_y_continuous(breaks=seq(0,1,0.5))+
+  theme(plot.title=element_text(size=18,face="bold"),
+        axis.text.x = element_text(angle=90,size=12),
+        axis.text.y = element_text(size=14,face="bold"),
+        axis.title=element_blank(),
+        legend.position="bottom",
+        legend.key.size = unit(0.6,"cm"),
+        legend.title = element_blank(),
+        legend.text = element_text(size=10),
+        strip.background = element_blank(),
+        strip.text = element_blank())+
+  coord_flip()
+
+
+
+#--
+
+#JOINING TOGETHER
+figure.s6 <- ggarrange(a,b,ncol=2,
+                       common.legend = T,legend = "top",
+                       align="v",
+                       heights = c(4,4))+
+  theme(plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm"))
+
+
+#output
+annotate_figure(figure.s6,
+                bottom = text_grob("Proportion in Dataset", 
+                                 color = "black",
+                                 face="bold",
+                                 size=16,
+                                 vjust=-0.5))
+
+#REMOVING UNNECESSARY
+rm(a,b,boo,boo1,positions,positions1)
+
+```
+
+
+``` {r defunct code}
+#---
+
+# ## Alternative figure ##
+# 
+# #Alternate for entire region
+# figure.s6b<-boo %>%
+#   ggplot(aes(x=factor(Land_Use,
+#                       levels=c("Water2006_Per","Barren2006_Per","Shrub2006_Per",
+#                                "Grassland2006_Per","Pasture2006_Per","Crops2006_Per",
+#                                "Deciduous2006_Per","Evergreen2006_Per","Mixed_Forest2006_Per",
+#                                "Woody_Wet2006_Per","Herb_Wet2006_Per",
+#                                "Dev_Open2006_Per","Dev_Low2006_Per",
+#                                "Dev_Med2006_Per","Dev_High2006_Per")),
+#                       y=Percent_Cover,group=Dataset,fill=Dataset))+
+#   geom_bar(stat="identity",position=position_dodge(width=0.9))+
+#   theme_classic()+
+#    scale_fill_manual(values=c("chocolate2",
+#                               "darkgreen"),
+#                     labels=c("BBA","BBS"))+
+# labs(y="Proportion in dataset",
+#      x="Land-cover type",
+#        fill=NULL)+
+#   scale_x_discrete(breaks=c("Water2006_Per","Barren2006_Per","Shrub2006_Per",
+#                                "Grassland2006_Per","Pasture2006_Per","Crops2006_Per",
+#                                "Deciduous2006_Per","Evergreen2006_Per","Mixed_Forest2006_Per",
+#                                "Woody_Wet2006_Per","Herb_Wet2006_Per",
+#                                "Dev_Open2006_Per","Dev_Low2006_Per",
+#                                "Dev_Med2006_Per","Dev_High2006_Per"),
+#                    labels=c("Water","Barren","Shrub","Grass","Pasture","Crops",
+#                             "Deciduous","Evergreen","Mixed Forest",
+#                             "W. Wetland","H. Wetland",
+#                             "Open Land","Low Res",
+#                             "Med Res","High Res")
+#                    )+
+#   scale_y_continuous(breaks=seq(0,0.4,0.05))+
+#   theme(plot.title=element_text(size=18,face="bold"),
+#         axis.text.x = element_text(angle=90,size=10),
+#         axis.text.y = element_text(size=12),
+#         axis.title.x = element_blank(),
+#         axis.title.y = element_text(size=17, face="bold",vjust=2),
+#         legend.position="top",
+#         legend.key.size = unit(0.6,"cm"),
+#         legend.title = element_blank(),
+#         legend.text = element_text(size=10))
+# 
+# figure.s6b
+# 
+# 
+# 
+
+#---
+
+#DEFUNCT CODE
+# #plotting
+# boo1 %>%
+#   ggplot(aes(x=factor(Land_Use,
+#                       levels=c("Water2006_Per","Barren2006_Per","Shrub2006_Per",
+#                                "Grassland2006_Per","Pasture2006_Per","Crops2006_Per",
+#                                "Deciduous2006_Per","Evergreen2006_Per","Mixed_Forest2006_Per",
+#                                "Woody_Wet2006_Per","Herb_Wet2006_Per",
+#                                "Dev_Open2006_Per","Dev_Low2006_Per",
+#                                "Dev_Med2006_Per","Dev_High2006_Per")),
+#                       y=Percent_Cover,group=Dataset,fill=Dataset))+
+#   geom_bar(stat="identity",position=position_dodge(width=0.9),alpha=0.7)+
+#   theme_classic()+
+#    scale_fill_brewer(type="qual",palette = 7,
+#                     labels=c("BBA","BBS"))+
+# labs(title="Distribution of Land-Classes by Dataset",
+#        y="Proportion in Dataset",
+#        fill=NULL)+
+#   scale_x_discrete(breaks=c("Water2006_Per","Barren2006_Per","Shrub2006_Per",
+#                                "Grassland2006_Per","Pasture2006_Per","Crops2006_Per",
+#                                "Deciduous2006_Per","Evergreen2006_Per","Mixed_Forest2006_Per",
+#                                "Woody_Wet2006_Per","Herb_Wet2006_Per",
+#                                "Dev_Open2006_Per","Dev_Low2006_Per",
+#                                "Dev_Med2006_Per","Dev_High2006_Per"),
+#                    labels=c("Water","Barren","Shrub","Grass","Pasture","Crops",
+#                             "Deciduous","Evergreen","Mixed Forest",
+#                             "Wetland","Herb Wetland",
+#                             "Open Land","Low Res",
+#                             "Medium Res","High Res")
+#                    )+
+#   facet_wrap(~State,scales="free_y")+
+#   theme(axis.text.x = element_text(angle=90),
+#         plot.title=element_text(hjust=0.5),
+#         axis.title.x=element_blank(),
+#         legend.position = "bottom")
+
+```
+
+
+#### 6) BBA blocks geographically matched to BBS routes with more than 30hrs sampling effort will have higher local richness
+
+Local richness of breeding birds in BBS routes (orange), and BBA blocks that overlap with BBS routes and have a sampling effort of >30 hours (green). Error bars indicate 95% confidence intervals.
+
+```{r Figure S4, message=FALSE, warning=FALSE,fig.width=5, fig.height=4, dpi=300}
+
+target <- c("SampledAdjacent","BBS")
+
+#Graphing results by sample size
+figure.s4 <- Prediction_Figures %>%
+  filter(Dataset %in% target) %>%
+  ggplot(aes(x=Region,y=Local_Richness,
+             group=factor(Dataset,levels=c("SampledAdjacent","BBS")),
+             color=factor(Dataset,levels=c("SampledAdjacent","BBS"))))+
+  theme_classic()+
+  geom_point(size=4,
+             position=position_dodge(width=0.6))+
+  geom_errorbar(aes(ymin=AlphaLow.CI,
+                    ymax=AlphaUp.CI),
+                position=position_dodge(width=0.6),
+                width=0.25)+
+  scale_color_manual(values=c(alpha("chocolate2",0.85),"darkgreen"),
+                    labels=c("BBA (Adjacent >30 hr)","BBS"))+
+  labs(y="Local richness",
+       color=NULL)+
+  coord_cartesian(ylim=c(60,105))+
+  scale_y_continuous(breaks=seq(60,105,20))+
+  theme(axis.text.x = element_text(face="bold",size=17),
+        axis.title.x = element_blank(),
+        axis.text.y = element_text(size=16),
+        axis.title.y = element_text(face="bold",size=17,vjust=3,hjust=0.5),
+        legend.position = c(0.8,0.85),
+        legend.key.height = unit(0.6, "cm"),
+        legend.key.size = unit(0.25,"cm"),
+        legend.text = element_text(size=12),
+        plot.margin = margin(t=0.75,r=0.75,b=0.75,l=1,"cm")
+        )
+
+#output
+figure.s4
+
+#removing
+rm(target)
+
+```
+
+
+```{r saving workspace, message=FALSE, warning=FALSE}
+
+save.image(file="Final Figures2.RData")
+
+```
+
