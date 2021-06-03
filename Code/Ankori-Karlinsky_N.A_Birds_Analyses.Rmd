@@ -34,9 +34,13 @@ library(mosaic) #Summary statistics
 library(DescTools) #Summary statistics
 
 library(effects) #Extracting model results
+library(blmeco)  #Testing overdispersion
 library(MuMIn) #Model results and interpretation
 library(lme4) #mixed models
-library(glmmTMB) #rsquared
+library(broom.mixed) #accounting for overdispersion
+library(optimx) #optimize models
+library(glmmTMB) #rsquared and fitting negative binomial
+library(DHARMa) #plotting residuals for negative binomial
 library(merTools) #extracting results from mixed models
 library(coefplot) #plotting coefficient plots
 library(sjPlot) #visualizing and table output of models
@@ -45,7 +49,7 @@ library(rsq) #rsquared
 
 library(naniar) # Visualization of missing values
 library(Amelia) # Testing missing columns
-#library(corrplot) #correlation plots
+library(corrplot) #correlation plots
 #library(psych) #correlation plots
 
 library(leaps) #Information Criterion Test
@@ -53,6 +57,8 @@ library(rcompanion) #permutation tests
 library(permute) #permutation tests
 library(GmAMisc) #permutation t-tests
 library(tadaatoolbox) #pretty t-test tables
+library(rstatix) #t-test assumptions
+library(pixiedust) #rendering in markdown
 
 library(vegan) #ordination, dissimilarity indices, and extrapolation tests
 library(iNEXT) #similar to vegan
@@ -166,6 +172,8 @@ between BBS routes and BBA blocks in five states in Northeastern US:
 
 This is tested with a paired t-test (n=5 states) by comparing differences in the the ranges of mean annual precipitation, mean summer temperature, and mean elevation, between BBA blocks and BBS routes.
 
+It is also tested by performing a non-parametric dependent 2-group Wilcoxon Signed Rank Test
+
 
 ```{r Prediction 1 Summary Tables,message=FALSE,warning=FALSE}
 
@@ -221,6 +229,42 @@ Sampled_Adjacent_Environmental_Range_Comparison <- SampledAdj_Full %>%
 
 **Starting with entire dataset:**
 
+*T-Test*
+
+```{r Prediction 1 T-test assumption tests, message=FALSE, warning=FALSE}
+
+#Running shapiro-wilks test of normality of differences in means
+
+#Precipitation range
+prec_shapiro<-Environmental_Range_Comparison %>% 
+  group_by(State) %>% #grouping by state
+  summarize(prec_diff = Precipitation_Range - lag(Precipitation_Range)) %>% #difference BBA-BBS
+  filter(!is.na(prec_diff))#remove NA
+
+shapiro_test(as.data.frame(prec_shapiro),prec_diff) #shaprio-wilks test (p value above 0.05 means we can do t-test)
+
+#Temperature range
+temp_shapiro<-Environmental_Range_Comparison %>% 
+  group_by(State) %>% #grouping by state
+  summarize(temp_diff = Temperature_Range - lag(Temperature_Range)) %>% #difference BBA-BBS
+  filter(!is.na(temp_diff))#remove NA
+
+shapiro_test(as.data.frame(temp_shapiro),temp_diff) #shaprio-wilks test (p value above 0.05 means we can do t-test)
+
+#Elevation range
+elev_shapiro<-Environmental_Range_Comparison %>% 
+  group_by(State) %>% #grouping by state
+  summarize(elev_diff = Elevation_Range - lag(Elevation_Range)) %>% #difference BBA-BBS
+  filter(!is.na(elev_diff))#remove NA
+
+shapiro_test(as.data.frame(elev_shapiro),elev_diff) #shaprio-wilks test (p value above 0.05 means we can do t-test)
+
+#all good!
+#rm(prec_shapiro,temp_shapiro,elev_shapiro)
+
+```
+
+
 
 ```{r Prediction 1 T-Tests All Data,message=FALSE, warning=FALSE}
 #For entire data Precipitation
@@ -228,22 +272,49 @@ tadaa_t.test(data=Environmental_Range_Comparison,
              response=Precipitation_Range,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
 
 #For entire data Temperature
 tadaa_t.test(data=Environmental_Range_Comparison,
              response=Temperature_Range,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
 
 #For entire data Elevation
 tadaa_t.test(data=Environmental_Range_Comparison,
              response=Elevation_Range,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
 
+```
+
+*Wilcox Test*
+
+```{r Prediction 1 Wilcox Test All Data,message=FALSE, warning=FALSE}
+
+#For entire data Precipitation
+wilcox.test(Precipitation_Range~Dataset,
+            data=Environmental_Range_Comparison,
+            paired=T,
+            conf.int = T)
+
+#For entire data Temperature
+wilcox.test(Temperature_Range~Dataset,
+            data=Environmental_Range_Comparison,
+            paired=T,
+            conf.int = T)
+
+
+#For entire data Elevation
+wilcox.test(Elevation_Range~Dataset,
+            data=Environmental_Range_Comparison,
+            paired=T,
+            conf.int = T)
 ```
 
 ---
@@ -256,22 +327,49 @@ tadaa_t.test(data=Adjacent_Environmental_Range_Comparison,
              response=Precipitation_Range,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
 
 #Temperature
 tadaa_t.test(data=Adjacent_Environmental_Range_Comparison,
              response=Temperature_Range,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
 
 #Elevation
 tadaa_t.test(data=Adjacent_Environmental_Range_Comparison,
              response=Elevation_Range,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
 
+```
+
+*Wilcox Test*
+
+```{r Prediction 1 Wilcox Test Adjacent,message=FALSE, warning=FALSE}
+
+#For entire data Precipitation
+wilcox.test(Precipitation_Range~Dataset,
+            data=Adjacent_Environmental_Range_Comparison,
+            paired=TRUE,
+            conf.int = T)
+
+#For entire data Temperature
+wilcox.test(Temperature_Range~Dataset,
+            data=Adjacent_Environmental_Range_Comparison,
+            paired=TRUE,
+            conf.int = T)
+
+
+#For entire data Elevation
+wilcox.test(Elevation_Range~Dataset,
+            data=Adjacent_Environmental_Range_Comparison,
+            paired=TRUE,
+            conf.int = T)
 ```
 
 ---
@@ -284,22 +382,48 @@ tadaa_t.test(data=Sampled_Environmental_Range_Comparison,
              response=Precipitation_Range,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
 
 #Temperature
 tadaa_t.test(data=Sampled_Environmental_Range_Comparison,
              response=Temperature_Range,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
 
 #Elevation
 tadaa_t.test(data=Sampled_Environmental_Range_Comparison,
              response=Elevation_Range,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
 
+```
+
+
+```{r Prediction 1 Wilcox Test Sampled,message=FALSE, warning=FALSE}
+
+#For entire data Precipitation
+wilcox.test(Precipitation_Range~Dataset,
+            data=Sampled_Environmental_Range_Comparison,
+            paired=TRUE,
+            conf.int = T)
+
+#For entire data Temperature
+wilcox.test(Temperature_Range~Dataset,
+            data=Sampled_Environmental_Range_Comparison,
+            paired=TRUE,
+            conf.int = T)
+
+
+#For entire data Elevation
+wilcox.test(Elevation_Range~Dataset,
+            data=Sampled_Environmental_Range_Comparison,
+            paired=TRUE,
+            conf.int = T)
 ```
 
 ---
@@ -312,21 +436,46 @@ tadaa_t.test(data=Sampled_Adjacent_Environmental_Range_Comparison,
              response=Precipitation_Range,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
 
 #Temperature
 tadaa_t.test(data=Sampled_Adjacent_Environmental_Range_Comparison,
              response=Temperature_Range,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
 
 #Elevation
 tadaa_t.test(data=Sampled_Adjacent_Environmental_Range_Comparison,
              response=Elevation_Range,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
+```
+
+```{r Prediction 1 Wilcox Test Sampled Adjacent,message=FALSE, warning=FALSE}
+
+#For entire data Precipitation
+wilcox.test(Precipitation_Range~Dataset,
+            data=Sampled_Adjacent_Environmental_Range_Comparison,
+            paired=TRUE,
+            conf.int = T)
+
+#For entire data Temperature
+wilcox.test(Temperature_Range~Dataset,
+            data=Sampled_Adjacent_Environmental_Range_Comparison,
+            paired=TRUE,
+            conf.int = T)
+
+
+#For entire data Elevation
+wilcox.test(Elevation_Range~Dataset,
+            data=Sampled_Adjacent_Environmental_Range_Comparison,
+            paired=TRUE,
+            conf.int = T)
 ```
 
 
@@ -335,7 +484,11 @@ tadaa_t.test(data=Sampled_Adjacent_Environmental_Range_Comparison,
 #removing datasets from prediction 1 to save space in environment
 rm(Environmental_Range_Comparison, Adjacent_Environmental_Range_Comparison,
    Sampled_Environmental_Range_Comparison,
-   Sampled_Adjacent_Environmental_Range_Comparison)
+   Sampled_Adjacent_Environmental_Range_Comparison,
+   Env.BBA,Env.BBS,Env.BBA,Adj.Env.BBA,Adj.Env.BBS,Sampled.Env.BBA,Sampled.Env.BBS,
+   Sampled.Adj.Env.BBA,Sampled.Adj.Env.BBS)
+
+gc()
 
 ```
 
@@ -358,23 +511,59 @@ We also run the same analysis with geographically-matched pairs of sampling unit
 
 
 **Starting with elevation range for entire dataset**
+Because elevation is right skewed, we use gamma distribution
 
 ```{r Prediction 2 Elevation Range All data, message=FALSE, warning=FALSE}
 
-#running model (assumed gaussian)
-prediction2.elev <- glmer(Elev_Range ~ as.factor(Dataset)
-                              + (1|State),
-                              data=full_d)
+#running model gamma distribution non-log transformed
+prediction2.elev <- full_d %>%
+  filter(Elev_Range != 0) %>%
+  glmer(Elev_Range ~ as.factor(Dataset)
+                          + (1|State),
+                          data=.,
+                          family=Gamma(link="log"))
 
 #table output
 tab_model(prediction2.elev,
-          show.se=T)%>%
-  return() %$% 
-    knitr %>% 
-    asis_output()
+          show.est = T)
+
+#anova
+anova.elev_range<- aov(Elev_Range ~ Dataset, data=full_d)
+summary(anova.elev_range)
+TukeyHSD(anova.elev_range)
+
+
+#running model (assumed gaussian) log transformed
+prediction2b.elev <- full_d %>%
+  mutate(log_range = log1p(Elev_Range)) %>% #log-transforming
+  filter(!is.na(log_range),
+         log_range != "Inf",
+         log_range != "-Inf") %>% #removing infinity values
+  lmer(log_range ~ as.factor(Dataset) #running model
+                              + (1|State),
+                              data=.)
+
+#table output
+tab_model(prediction2b.elev,
+          show.est = T)
+
+
+#by state
+full_d %>%
+  group_by(State) %>%
+  do(fitElev = glance(lm(Elev_Range ~ as.factor(Dataset), 
+                       data = .))) %>%
+  unnest(fitElev)
+
+     
+```
+
+
+```{r prediction 2 elevation range all data plots, message=FALSE, warning=FALSE}
+
 
 #extracting r2
-r2=round(r.squaredGLMM(prediction2.elev)[2],digits=4)
+#r2=round(r.squaredGLMM(prediction2.elev)[2],digits=4)
 
 #plot model
 plot_model(prediction2.elev,type="pred",terms="Dataset",
@@ -383,8 +572,8 @@ plot_model(prediction2.elev,type="pred",terms="Dataset",
       scale_color_brewer(type = "qual",palette = 7)+
   labs(title="Predicted Elevation Range by Dataset",
        y="Elevation Range per Sampling Unit (m)")+
- geom_label(aes(x=1.5,y=250,
-                 label=paste("R2=",r2)),col="black")+
+ #geom_label(aes(x=1.5,y=250,
+#                 label=paste("R2=",r2)),col="black")+
   theme(plot.title=element_text(hjust=0.5))
 
 #plot random effect
@@ -405,12 +594,30 @@ plot_model(prediction2.elev,type="pred",terms=c("State","Dataset"),
       scale_color_brewer(type = "qual",palette = 7)+
   labs(title="Predicted Elevation Range by Dataset",
        y="Elevation Range per Sampling Unit (m)")+
- geom_label(aes(x=1.5,y=250,
-                 label=paste("R2=",r2)),col="black")+
+ #geom_label(aes(x=1.5,y=250,
+#                 label=paste("R2=",r2)),col="black")+
   theme(plot.title=element_text(hjust=0.5))
 
+#plotting diagnostic
+plot_model(prediction2.elev, type="diag")
+plot(prediction2.elev)
+#plot
+qqnorm(resid(prediction2.elev))
+qqline(resid(prediction2.elev))
+
+#plotting diagnostic log-transformed
+plot_model(prediction2b.elev, type="diag")
+plot(prediction2b.elev)
+#plot
+qqnorm(resid(prediction2b.elev))
+qqline(resid(prediction2b.elev))
+
+#bartlett test for homogeneity of variance
+bartlett.test(Elev_Range ~ as.factor(Dataset),
+              data=full_d)
+
 #removing from environment to save space
-rm(prediction2.elev)
+rm(prediction2.elev,prediction2b.elev)
 
 ```
 
@@ -422,16 +629,49 @@ rm(prediction2.elev)
 
 ```{r Prediction 2 Land-Class Richness Entire dataset, warning=FALSE, message=FALSE}
 #running model (assumed gaussian)
-prediction2.landrich <- glmer(Het_Count2006 ~ as.factor(Dataset)
+prediction2.landrich <- lmer(Het_Count2006 ~ as.factor(Dataset)
                               +(1|State),
                               data=full_d)
 
 #output model table
 tab_model(prediction2.landrich,
-          show.se=T) %>%
-  return() %$% 
-    knitr %>% 
-    asis_output()
+          show.se=T)
+
+#anova
+anova.landrich <- aov(Het_Count2006 ~ Dataset, data=full_d)
+summary(anova.landrich)
+TukeyHSD(anova.landrich)
+
+
+#running model Poisson distribution for count data
+prediction2b.landrich <- glmer(Het_Count2006 ~ as.factor(Dataset)
+                              +(1|State),
+                              data=full_d,
+                              family=poisson(link="log"))
+
+#output model table
+tab_model(prediction2b.landrich,
+          title="Prediction 2 Poisson",
+          show.se=T)
+
+#using the glmmTMB pacakge to calculate quasi-possion (i.e. negative binomial 1)
+prediction2c.landrich <-glmmTMB::glmmTMB(Het_Count2006 ~ as.factor(Dataset)+
+                      (1|State),
+                       data=full_d,
+                       family="nbinom1") #negative binoimal 1 or quasi-poisson
+
+#table of model
+tab_model(prediction2c.landrich,
+          title="Prediction 2 Quasi-Poisson",
+          string.pred = "Coefficient",
+          string.ci = "95% CIs",
+          string.p = "P-Value",
+          show.se = T,
+          string.se="SE")
+
+```
+
+```{r Prediction 2 Land-Class Richness Entire Dataset Plots}
 
 #extracting r2
 r2=round(r.squaredGLMM(prediction2.landrich)[2],digits=4)
@@ -472,9 +712,32 @@ plot_model(prediction2.landrich,type="pred",terms=c("State","Dataset"),
        y="# of Land Classes in Sampling Unit")+
   theme(plot.title=element_text(hjust=0.5))
 
+#plotting diagnostic
+plot_model(prediction2.landrich, type="diag")
+plot(prediction2.landrich)
+qqnorm(resid(prediction2.landrich))
+qqline(resid(prediction2.landrich))
+plot(resid(prediction2.landrich),full_d$Het_Count2006)
+
+
+#plotting diagnostic
+plot_model(prediction2b.landrich, type="diag")
+plot(prediction2b.landrich)
+qqnorm(resid(prediction2b.landrich))
+qqline(resid(prediction2b.landrich))
+plot(resid(prediction2b.landrich),full_d$Het_Count2006)
+
+#plotting diagnostic
+plot_model(prediction2c.landrich, type="diag")
+#plot(prediction2c.landrich)
+qqnorm(resid(prediction2c.landrich))
+qqline(resid(prediction2c.landrich))
+plot(resid(prediction2c.landrich),full_d$Het_Count2006)
+plot(full_d$Dataset,resid(prediction2c.landrich))
+
 
 #removing from environment to save space
-rm(prediction2.landrich)
+rm(prediction2.landrich,prediction2b.landrich,prediction2c.landrich)
 
 ```
 
@@ -487,17 +750,27 @@ rm(prediction2.landrich)
 
 ```{r Prediction 2 Land-Class Diversity Entire dataset, warning=FALSE, message=FALSE}
 #running model (assumed gaussian)
-prediction2.landdiv <- glmer(Shannon2006 ~ as.factor(Dataset)
+prediction2.landdiv <- lmer(Shannon2006 ~ as.factor(Dataset)
                               + (1|State),
                               data=full_d)
 
+#anova
+anova.landdiv <- aov(Shannon2006 ~ Dataset, data=full_d)
+summary(anova.landdiv)
+TukeyHSD(anova.landdiv)
+
 #table
 tab_model(prediction2.landdiv,
-          show.se=T) %>%
-  return() %$% 
-    knitr %>% 
-    asis_output()
+          show.se=T)
 
+#bartlett test
+bartlett.test(Shannon2006 ~ as.factor(Dataset),
+              data=full_d)
+
+```
+
+
+```{r Prediction 2 Land-Class Diversity Entire Data plots, warning=FALSE, message=FALSE}
 #extracting r2
 r2=round(r.squaredGLMM(prediction2.landdiv)[2],digits=4)
 
@@ -534,6 +807,12 @@ plot_model(prediction2.landdiv,type="pred",terms=c("State","Dataset"),
        y="Land-Class Diversity (Shannon-Wiener)")+
   theme(plot.title=element_text(hjust=0.5))
 
+#plot diagnostic
+plot_model(prediction2.landdiv, type="diag")
+plot(prediction2.landdiv)
+qqnorm(resid(prediction2.landdiv))
+qqline(resid(prediction2.landdiv))
+
 #removing from environment to save space
 rm(prediction2.landdiv)
 
@@ -556,10 +835,7 @@ adj_prediction2.elev <- glmer(Elev_Range ~ as.factor(Dataset)
 
 #table output
 tab_model(adj_prediction2.elev,
-          show.se=T)%>%
-  return() %$% 
-    knitr %>% 
-    asis_output()
+          show.se=T)
 
 #extracting r2
 r2=round(r.squaredGLMM(adj_prediction2.elev)[2],digits=4)
@@ -599,6 +875,12 @@ plot_model(adj_prediction2.elev,type="pred",terms=c("State","Dataset"),
  geom_label(aes(x=1.5,y=250,
                  label=paste("R2=",r2)),col="black")+
   theme(plot.title=element_text(hjust=0.5))
+
+#plot diagnostics
+plot_model(adj_prediction2.elev,type="diag")
+plot(adj_prediction2.elev)
+qqnorm(resid(adj_prediction2.elev))
+qqline(resid(adj_prediction2.elev))
 
 #removing from environment to save space
 rm(adj_prediction2.elev)
@@ -755,6 +1037,9 @@ Richness_Comparison <- tidy_full %>%
   group_by(Dataset,State) %>% # grouping by dataset,state
   dplyr::summarize(Regional_Richness = n_distinct(Species)) # counting only unique observations per species
 
+RichBBA <- Richness_Comparison[1:5,]
+RichBBS <- Richness_Comparison[6:10,]
+
 #Now summary table with adjacent
 Adjacent_Richness_Comparison <- tidy_full %>% 
   filter(Observations=="1",BBS_Adjacent!="No"|is.na(BBS_Adjacent)) %>% # keeping only observations of birds  that are adjacent
@@ -781,14 +1066,35 @@ Sampled_Adjacent_Richness_Comparison <- tidy_full %>%
 
 **Starting with entire dataset:**
 
+```{r Prediction 3 T-Test Assumption Tests, message=FALSE, warning=FALSE}
 
-```{r Prediction 3 T-Tests All Data,message=FALSE, warning=FALSE}
+#shapiro-wilk test of normality of difference in regional richness
+richness_diff <- Richness_Comparison %>%
+  group_by(State) %>% #grouping
+  summarize(rich_diff = Regional_Richness - lag(Regional_Richness)) %>%
+  filter(!is.na(rich_diff))
+
+shapiro_test(as.data.frame(richness_diff),rich_diff)
+
+```
+
+
+
+```{r Prediction 3 T-Tests and Wilcox All Data,message=FALSE, warning=FALSE}
  
 tadaa_t.test(data=Richness_Comparison,
              response=Regional_Richness,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
+
+#Non-parametric test
+wilcox.test(RichBBA$Regional_Richness,
+            RichBBS$Regional_Richness,
+            paired=TRUE,
+            conf.int = T)
+
 
 ```
 
@@ -796,38 +1102,41 @@ tadaa_t.test(data=Richness_Comparison,
 
 **For adjacent blocks:**
 
-```{r Prediction 3 T-Tests Adjacent,message=FALSE, warning=FALSE}
+```{r Prediction 3 T-Tests and Wilcox  Adjacent,message=FALSE, warning=FALSE}
 
 tadaa_t.test(data=Adjacent_Richness_Comparison,
              response=Regional_Richness,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
 
 ```
 
 
 **For well-sampled blocks (>30hr sampling):**
 
-```{r Prediction 3 T-Tests Sampled,message=FALSE, warning=FALSE}
+```{r Prediction 3 T-Tests and Wilcox  Sampled,message=FALSE, warning=FALSE}
 
 tadaa_t.test(data=Sampled_Richness_Comparison,
              response=Regional_Richness,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
 
 ```
 
 
 **For well-sampled adjacent blocks:**
 
-```{r Prediction 3 T-Tests Sampled Adjacent,message=FALSE, warning=FALSE}
+```{r Prediction 3 T-Tests and Wilcox Sampled Adjacent,message=FALSE, warning=FALSE}
 tadaa_t.test(data=Sampled_Adjacent_Richness_Comparison,
              response=Regional_Richness,
              group=Dataset,
              paired=T,
-             print="markdown")
+             print="markdown")%>%
+  print(asis = T)
 ```
 
 
@@ -1201,22 +1510,74 @@ prediction6<- glmer(Atlas2_Total ~ Dataset+
                family=poisson) # poisson
 
 #Output of regression as table
-tab_model(prediction6,title="Local Bird Richness by Dataset",
+tab_model(prediction6,title="Local Bird Richness by Dataset GLMM Poisson",
           string.pred = "Coefficient",
           string.ci = "95% CIs",
           string.p = "P-Value",
           show.se = T,
-          string.se="SE") %>%
-  return() %$% 
-    knitr %>% 
-    asis_output()
+          string.se="SE")
 
+#Adjusting for overdispersion
+overdisp_fun <- function(model) {
+    rdf <- df.residual(model)
+    rp <- residuals(model,type="pearson")
+    Pearson.chisq <- sum(rp^2)
+    prat <- Pearson.chisq/rdf
+    pval <- pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
+    c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
+}
+
+#adjusting model coefficients with this
+tidy_quasi <- function(model, phi=overdisp_fun(model)["ratio"],
+                       conf.level=0.95) {
+    tt <- (tidy(model, effects="fixed")
+        %>% mutate(std.error=std.error*sqrt(phi),
+                   statistic=estimate/std.error,
+                   p.value=2*pnorm(abs(statistic), lower.tail=FALSE))
+    )
+    return(tt)
+}
+
+kable(tidy_quasi(prediction6))
+
+
+#---
+
+#Now with normal distribution
+prediction6a <- lmer(Atlas2_Total ~ Dataset+
+                      (1|State),
+               data=full_d)
+
+#Output of regression as table
+tab_model(prediction6a,title="Local Bird Richness by Dataset LMM",
+          string.pred = "Coefficient",
+          string.ci = "95% CIs",
+          string.p = "P-Value",
+          show.se = T,
+          string.se="SE")
+
+#---
+
+#using the glmmTMB pacakge to calculate quasi-possion (i.e. negative binomial 1)
+prediction6b <-glmmTMB::glmmTMB(Atlas2_Total ~ Dataset+
+                      (1|State),
+                       data=full_d,
+                       family="nbinom1") #negative binoimal 1 or quasi-poisson
+
+#table of model
+tab_model(prediction6b,
+          title="Local Bird Richness by Environment GLMM Quasi-Poisson",
+          string.pred = "Coefficient",
+          string.ci = "95% CIs",
+          string.p = "P-Value",
+          show.se = T,
+          string.se="SE")
 ```
 
 
 
 
-```{r Prediction 6 Plots, message=FALSE, warning=FALSE}
+```{r Prediction 6 GLMM Poisson Plots, message=FALSE, warning=FALSE}
 
 #now plotting the rate ratios between the datasets with p-values
 plot_model(prediction6,show.values=T,show.p=T)+theme_classic()+
@@ -1267,9 +1628,135 @@ plot_model(prediction6,type="pred",terms =c("State","Dataset"),
   theme(plot.title=element_text(hjust=.5))+
   scale_y_continuous(limits=c(50,100))
 
+#now plotting diagnostic
+plot_model(prediction6, type="diag")
+plot(prediction6)
+
+qqnorm(resid(prediction6,type="deviance"))
+qqline(resid(prediction6))
 
 ```
 
+
+```{r Prediction 6a LMM Plots, message=FALSE, warning=FALSE}
+
+#now plotting the rate ratios between the datasets with p-values
+plot_model(prediction6a,show.values=T,show.p=T)+theme_classic()+
+  labs(title="Local Bird Richness by Dataset",
+       y="Rate Ratio (BBA to BBS)")+
+  theme(plot.title=element_text(hjust=.5))+
+  geom_hline(yintercept = 1,linetype="dotted")
+
+#extracting r2
+r2.c=round(as.numeric(rsq(prediction6a)[3]),digits=4)
+r2.m=round(as.numeric(rsq(prediction6a)[2]),digits=4)
+
+#now plotting the effect with richness on the y-axis
+plot_model(prediction6a,type="pred",terms ="Dataset",
+           show.values = T,
+           show.p=T)+theme_classic()+
+  labs(title="Local Bird Richness by Dataset from Model\n(State as random effect)",
+       x="Dataset",
+       y="Predicted Bird Species Richness")+
+   geom_label(aes(x=1.5,y=90,
+                 label=paste("Marginal R2=",r2.m, 
+                             "\nConditional R2=",r2.c)),col="black")+
+  theme(plot.title=element_text(hjust=.5))+
+  scale_y_continuous(limits=c(50,100))
+
+#now plotting the impact of the random effect of state
+plot_model(prediction6a,type="re",
+           show.values = T,
+           show.p=T)+theme_classic()+
+  labs(title="Random Effect of State on Species Richness Differences\n(BBA to BBS)",
+       y="Rate Ratio (BBA to BBS)",
+       x="State")+
+  theme(plot.title=element_text(hjust=.5))+
+    geom_hline(yintercept = 1,linetype="dotted")
+
+
+#now plotting predict with state
+plot_model(prediction6a,type="pred",terms =c("State","Dataset"),
+           show.values = T,
+           show.p=T)+theme_classic()+
+  labs(title="Local Bird Richness by Dataset from Model\n(State as random effect)",
+       x="Dataset",
+       y="Predicted Bird Species Richness")+
+   geom_label(aes(x=3,y=90,
+                 label=paste("Marginal R2=",r2.m, 
+                             "\nConditional R2=",r2.c)),col="black")+
+  scale_color_brewer(type = "qual",palette = 7)+
+  theme(plot.title=element_text(hjust=.5))+
+  scale_y_continuous(limits=c(50,100))
+
+#now plotting diagnostic
+plot_model(prediction6a, type="diag")
+plot(prediction6a)
+
+qqnorm(resid(prediction6a))
+qqline(resid(prediction6a))
+
+```
+
+```{r Prediction 6b simple GLMM Quasi Poisson Plots, message=FALSE, warning=FALSE}
+
+#now plotting the rate ratios between the datasets with p-values
+plot_model(prediction6b,show.values=T,show.p=T)+theme_classic()+
+  labs(title="Local Bird Richness by Dataset",
+       y="Rate Ratio (BBA to BBS)")+
+  theme(plot.title=element_text(hjust=.5))+
+  geom_hline(yintercept = 1,linetype="dotted")
+
+#extracting r2
+r2.c=round(r.squaredGLMM(prediction6b)[1,2],digits=4)
+r2.m=round(r.squaredGLMM(prediction6b)[1,1],digits=4)
+
+#now plotting the effect with richness on the y-axis
+plot_model(prediction6b,type="pred",terms ="Dataset",
+           show.values = T,
+           show.p=T)+theme_classic()+
+  labs(title="Local Bird Richness by Dataset from Model\n(State as random effect)",
+       x="Dataset",
+       y="Predicted Bird Species Richness")+
+   geom_label(aes(x=1.5,y=90,
+                 label=paste("Marginal R2=",r2.m, 
+                             "\nConditional R2=",r2.c)),col="black")+
+  theme(plot.title=element_text(hjust=.5))+
+  scale_y_continuous(limits=c(50,100))
+
+#now plotting the impact of the random effect of state
+plot_model(prediction6b,type="re",
+           show.values = T,
+           show.p=T)+theme_classic()+
+  labs(title="Random Effect of State on Species Richness Differences\n(BBA to BBS)",
+       y="Rate Ratio (BBA to BBS)",
+       x="State")+
+  theme(plot.title=element_text(hjust=.5))+
+    geom_hline(yintercept = 1,linetype="dotted")
+
+
+#now plotting predict with state
+plot_model(prediction6b,type="pred",terms =c("State","Dataset"),
+           show.values = T,
+           show.p=T)+theme_classic()+
+  labs(title="Local Bird Richness by Dataset from Model\n(State as random effect)",
+       x="Dataset",
+       y="Predicted Bird Species Richness")+
+   geom_label(aes(x=3,y=90,
+                 label=paste("Marginal R2=",r2.m, 
+                             "\nConditional R2=",r2.c)),col="black")+
+  scale_color_brewer(type = "qual",palette = 7)+
+  theme(plot.title=element_text(hjust=.5))+
+  scale_y_continuous(limits=c(50,100))
+
+#now plotting diagnostic
+plot_model(prediction6b, type="diag")
+#plot(prediction6b)
+
+qqnorm(resid(prediction6b))
+qqline(resid(prediction6b))
+
+```
 
 
 **Now running on Adjacent blocks**:
@@ -1527,7 +2014,7 @@ plot_model(sampled.adj.prediction6,
 
 **Now running model with environmental and heterogeneity variables**
 
-```{r Prediction 6 full GLM, message=FALSE, warning=FALSE}
+```{r Prediction 6 full GLMM, message=FALSE, warning=FALSE}
 
 prediction6.2 <- glmer(Atlas2_Total ~ 
                        Dataset   #ata source and effort
@@ -1542,27 +2029,81 @@ prediction6.2 <- glmer(Atlas2_Total ~
                      family=poisson) # family poisson
 
 #AIC checking which is best model
+AIC(prediction6.2)
 #step(prediction6.2)
 
 #Output of regression as table
 tab_model(prediction6.2,
-          title="Local Bird Richness by Dataset",
+          title="Local Bird Richness by Dataset GLMM Poisson",
           string.pred = "Coefficient",
           string.ci = "95% CIs",
           string.p = "P-Value",
           show.se = T,
           string.se="SE"
-          ) %>%
-  return() %$% 
-    knitr %>% 
-    asis_output()
+          )
+
+#Correcting for overdispersion
+kable(tidy_quasi(prediction6.2))
+
+
+
+#---
+
+#Gaussian LMM 
+prediction6.2a <- lmer(Atlas2_Total ~ 
+                       Dataset   #ata source and effort
+                       +scale(Precipitation)  #precipitation
+                       +scale(Temp)  #summer temperature
+                       +scale(Elev_Mean)  #elevation mean in block/route
+                       +scale(Elev_Range)  #elevation range in block/route
+                       +scale(Het_Count2006)  # land-class richness
+                       +scale(Shannon2006) # land-class diversity (Shannon-Wiener index)
+                       +(1|State), #state as random effect
+                       data=full_d) # data
+
+#AIC checking which is best model
+AIC(prediction6.2a)
+
+#Output of regression as table
+tab_model(prediction6.2a,
+          title="Local Bird Richness by Dataset LMM",
+          string.pred = "Coefficient",
+          string.ci = "95% CIs",
+          string.p = "P-Value",
+          show.se = T,
+          string.se="SE"
+          )
+
+#using the glmmTMB pacakge to calculate quasi-possion (i.e. negative binomial 1)
+prediction6.2b <-glmmTMB::glmmTMB(Atlas2_Total ~ 
+                       Dataset   #ata source and effort
+                       +scale(Precipitation)  #precipitation
+                       +scale(Temp)  #summer temperature
+                       +scale(Elev_Mean)  #elevation mean in block/route
+                       +scale(Elev_Range)  #elevation range in block/route
+                       +scale(Het_Count2006)  # land-class richness
+                       +scale(Shannon2006) # land-class diversity (Shannon-Wiener index)
+                       +(1|State), #state as random effect
+                       data=full_d,
+                       family="nbinom1") #negative binoimal 1 or quasi-poisson
+
+AIC(prediction6.2b)
+
+#table of model
+tab_model(prediction6.2b,
+          title="Local Bird Richness by Environment Full GLMM Quasi-Poisson",
+          string.pred = "Coefficient",
+          string.ci = "95% CIs",
+          string.p = "P-Value",
+          show.se = T,
+          string.se="SE")
 
 
 ```
 
 
 
-```{r Prediction 6 full GLM plots, message=FALSE, warning=FALSE}
+```{r Prediction 6 full GLMM Poisson plots, message=FALSE, warning=FALSE}
 
 #Plotting model
 plot_model(prediction6.2,show.values = T,show.p=T,show.intercept = T)+theme_classic()+
@@ -1580,8 +2121,8 @@ plot_model(prediction6.2,type="pred",terms ="Dataset",
        x="Dataset",
        y="Predicted Bird Species Richness")+
    geom_label(aes(x=1.5,y=40,
-                 label=paste("Marginal R2=",adj.r2.m, 
-                             "\nConditional R2=",adj.r2.c)),col="black")+
+                 label=paste("Marginal R2=",r2.m, 
+                             "\nConditional R2=",r2.c)),col="black")+
   theme(plot.title=element_text(hjust=.5))+
   scale_y_continuous(limits=c(20,50))
 
@@ -1610,8 +2151,132 @@ plot_model(prediction6.2,type="pred",terms =c("State","Dataset"),
   theme(plot.title=element_text(hjust=.5))+
   scale_y_continuous(limits=c(20,50))
 
+#now plotting diagnostic
+plot(prediction6.2)
+plot_model(prediction6.2, type="resid")
+plot_model(prediction6.2, type="diag")
+qqnorm(residuals(prediction6.2,type="deviance"))
+qqline(resid(prediction6.2))
+
+
 ```
 
+```{r Prediction 6 full LMM plots, message=FALSE, warning=FALSE}
+
+#Plotting model
+plot_model(prediction6.2a,show.values = T,show.p=T,show.intercept = T)+theme_classic()+
+  labs(title="GLM All Factors Contributing to Local Richness")
+
+#extracting r2
+r2.c=round(as.numeric(rsq(prediction6.2a)[3]),digits=4)
+r2.m=round(as.numeric(rsq(prediction6.2a)[1]),digits=4)
+
+#now plotting the effect with richness on the y-axis
+plot_model(prediction6.2a,type="pred",terms ="Dataset",
+           show.values = T,
+           show.p=T)+theme_classic()+
+  labs(title="Local Bird Richness by Dataset Full GLM\n(State as random effect)",
+       x="Dataset",
+       y="Predicted Bird Species Richness")+
+   geom_label(aes(x=1.5,y=40,
+                 label=paste("Marginal R2=",r2.m, 
+                             "\nConditional R2=",r2.c)),col="black")+
+  theme(plot.title=element_text(hjust=.5))+
+  scale_y_continuous(limits=c(20,50))
+
+#now plotting the impact of the random effect of state
+plot_model(prediction6.2a,type="re",
+           show.values = T,
+           show.p=T)+theme_classic()+
+  labs(title="Random Effect of State Full GLM\n(BBA to BBS)",
+       y="Rate Ratio (BBA to BBS)",
+       x="State")+
+  theme(plot.title=element_text(hjust=.5))+
+    geom_hline(yintercept = 1,linetype="dotted")
+
+
+#now plotting predict with state
+plot_model(prediction6.2a,type="pred",terms =c("State","Dataset"),
+           show.values = T,
+           show.p=T)+theme_classic()+
+  labs(title="Local Bird Richness by Dataset Full GLM\n(State as random effect)",
+       x="Dataset",
+       y="Predicted Bird Species Richness")+
+   geom_label(aes(x=3,y=45,
+                 label=paste("Marginal R2=",adj.r2.m, 
+                             "\nConditional R2=",adj.r2.c)),col="black")+
+  scale_color_brewer(type = "qual",palette = 7)+
+  theme(plot.title=element_text(hjust=.5))+
+  scale_y_continuous(limits=c(20,50))
+
+#now plotting diagnostic
+plot(prediction6.2a)
+plot_model(prediction6.2a, type="resid")
+plot_model(prediction6.2a, type="diag")
+qqnorm(residuals(prediction6.2a,type="deviance"))
+qqline(resid(prediction6.2a))
+
+
+```
+
+
+```{r Prediction 6 full GLM Quassi-Poisson plots, message=FALSE, warning=FALSE}
+
+#Plotting model
+plot_model(prediction6.2b,show.values = T,show.p=T,show.intercept = T)+theme_classic()+
+  labs(title="GLM All Factors Contributing to Local Richness")
+
+#extracting r2
+r2.c=round(r.squaredGLMM(prediction6.2b)[1,2],digits=4)
+r2.m=round(r.squaredGLMM(prediction6.2b)[1,1],digits=4)
+
+#now plotting the effect with richness on the y-axis
+plot_model(prediction6.2b,type="pred",terms ="Dataset",
+           show.values = T,
+           show.p=T)+theme_classic()+
+  labs(title="Local Bird Richness by Dataset Full GLM\n(State as random effect)",
+       x="Dataset",
+       y="Predicted Bird Species Richness")+
+   geom_label(aes(x=1.5,y=40,
+                 label=paste("Marginal R2=",r2.m, 
+                             "\nConditional R2=",r2.c)),col="black")+
+  theme(plot.title=element_text(hjust=.5))+
+  scale_y_continuous(limits=c(20,50))
+
+#now plotting the impact of the random effect of state
+plot_model(prediction6.2b,type="re",
+           show.values = T,
+           show.p=T)+theme_classic()+
+  labs(title="Random Effect of State Full GLM\n(BBA to BBS)",
+       y="Rate Ratio (BBA to BBS)",
+       x="State")+
+  theme(plot.title=element_text(hjust=.5))+
+    geom_hline(yintercept = 1,linetype="dotted")
+
+
+#now plotting predict with state
+plot_model(prediction6.2b,type="pred",terms =c("State","Dataset"),
+           show.values = T,
+           show.p=T)+theme_classic()+
+  labs(title="Local Bird Richness by Dataset Full GLM\n(State as random effect)",
+       x="Dataset",
+       y="Predicted Bird Species Richness")+
+   geom_label(aes(x=3,y=45,
+                 label=paste("Marginal R2=",adj.r2.m, 
+                             "\nConditional R2=",adj.r2.c)),col="black")+
+  scale_color_brewer(type = "qual",palette = 7)+
+  theme(plot.title=element_text(hjust=.5))+
+  scale_y_continuous(limits=c(20,50))
+
+#now plotting diagnostic
+#plot(prediction6.2b)
+plot_model(prediction6.2b, type="resid")
+plot_model(prediction6.2b, type="diag")
+qqnorm(residuals(prediction6.2b))
+qqline(resid(prediction6.2b))
+
+
+```
 
 ```{r Prediction 6 full GLM individual effects, message=FALSE, warning=FALSE}
 
@@ -1967,6 +2632,54 @@ This is tested in two steps:
   2. We expect that much of the differences in local richness between matched BBA blocks and BBS routes would be accounted for by the corresponding differences in sampling effort.
 
 
+**Checking for collinearity among predictors of full GLMM**
+```{r Prediction 8 Pearson, message=FALSE, warning=FALSE}
+
+#adding scaled log effort
+full_d<- full_d %>%
+  mutate(standard.effort = scale(logEffort))
+
+#subsetting data
+corey <- full_d %>%
+  dplyr::select(Precipitation,  #precipitation
+                Temp, #summer temp
+                Elev_Mean, #mean elevation
+                Elev_Range, #elevation range
+                Het_Count2006, #land-class richness
+                Shannon2006, #land-class diversity
+                standard.effort, #sampling effort
+                ) %>%
+  rename(Rain = Precipitation,
+         Elevation = Elev_Mean,
+         `Elevation Range` = Elev_Range,
+         `LC Richness` = Het_Count2006,
+         `LC Diversity` = Shannon2006,
+         Effort = standard.effort)
+  
+
+#Creating Pearson value matrix
+call=cor(corey,use="complete.obs",method = "pearson") # making matrix
+
+#Significance test for correlations using Pearson method
+corey.test=cor.mtest(corey,use="complete.obs",method = "pearson")
+
+#Plotting matrix with insignificant correlations marked with a cross
+corrplot(call, method = "color",
+         type = "full", order = "hclust", number.cex = .7, 
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col = "black", tl.srt = 90, tl.cex=1.2, # Text label color and rotation
+         # Combine with significance
+         p.mat = corey.test$p, sig.level = 0.05, insig = "pch", 
+         # hide correlation coefficient on the principal diagonal
+         diag = F)
+
+#table
+kable(call)
+
+```
+
+
+
 **First running regression with richness as response and effort as predictor**
 
 ```{r Prediction 8 simple GLM, message=FALSE,warning=FALSE}
@@ -1984,10 +2697,7 @@ tab_model(prediction8.1,
           string.ci = "95% CIs",
           string.p = "P-Value",
           show.se = T,
-          string.se="SE")%>%
-  return() %$% 
-    knitr %>% 
-    asis_output()
+          string.se="SE")
 
 
 ## plotting model
@@ -1998,65 +2708,258 @@ plot_model(prediction8.1,type="pred",
   theme_classic()+
   labs(title="Local Bird Richness by Effort (in hours)")
 
+#diagnostic
+plot(prediction8.1)
 
 ```
 
 
 
 **Now running GLM with effort as interaction with data source and including all other variables as predictors**
+```{r Prediction 8 GLMM By State, message=FALSE, warning=FALSE}
 
-```{r Prediction 8 Full GLM,message=FALSE,warning=FALSE}
-
-#adding scaled log effort
-full_d<- full_d %>%
-  mutate(standard.effort = scale(logEffort))
-  
-
-#Running GLM
-prediction8.2 <- glm(logRichness ~ 
-                       standard.effort*Dataset   # interaction of data source and effort
+#MA
+prediction8.ma <- full_d %>%
+  filter(State=="MA") %>%
+  glm(logRichness ~ standard.effort*Dataset
                        +scale(Precipitation)  #precipitation
                        +scale(Temp)  #summer temperature
                        +scale(Elev_Mean)  #elevation mean in block/route
                        +scale(Elev_Range)  #elevation range in block/route
                        +scale(Het_Count2006)  # land-class richness
-                       +scale(Shannon2006), # land-class diversity (Shannon-Wiener index)
+                       +scale(Shannon2006), # land-class diversity (Shannon-Wiener index
+                       data=., # data
+                       family="poisson")
+
+#table of model
+tab_model(prediction8.ma,
+          title="Local Bird Richness by Effort Full GLM MA",
+          string.pred = "Coefficient",
+          string.ci = "95% CIs",
+          string.p = "P-Value",
+          show.se = T,
+          string.se="SE")
+
+#MI
+prediction8.mi <- full_d %>%
+  filter(State=="MI") %>%
+  glm(logRichness ~ standard.effort*Dataset
+                       +scale(Precipitation)  #precipitation
+                       +scale(Temp)  #summer temperature
+                       +scale(Elev_Mean)  #elevation mean in block/route
+                       +scale(Elev_Range)  #elevation range in block/route
+                       +scale(Het_Count2006)  # land-class richness
+                       +scale(Shannon2006), # land-class diversity (Shannon-Wiener index
+                       data=., # data
+                       family="poisson")
+
+#table of model
+tab_model(prediction8.mi,
+          title="Local Bird Richness by Effort Full GLM MI",
+          string.pred = "Coefficient",
+          string.ci = "95% CIs",
+          string.p = "P-Value",
+          show.se = T,
+          string.se="SE")
+
+
+#NY
+prediction8.ny <- full_d %>%
+  filter(State=="NY") %>%
+  glm(logRichness ~ standard.effort*Dataset
+                       +scale(Precipitation)  #precipitation
+                       +scale(Temp)  #summer temperature
+                       +scale(Elev_Mean)  #elevation mean in block/route
+                       +scale(Elev_Range)  #elevation range in block/route
+                       +scale(Het_Count2006)  # land-class richness
+                       +scale(Shannon2006), # land-class diversity (Shannon-Wiener index
+                       data=., # data
+                       family="poisson")
+
+#table of model
+tab_model(prediction8.ny,
+          title="Local Bird Richness by Effort Full GLM NY",
+          string.pred = "Coefficient",
+          string.ci = "95% CIs",
+          string.p = "P-Value",
+          show.se = T,
+          string.se="SE")
+
+#PA
+prediction8.pa <- full_d %>%
+  filter(State=="PA") %>%
+  glm(logRichness ~ standard.effort*Dataset
+                       +scale(Precipitation)  #precipitation
+                       +scale(Temp)  #summer temperature
+                       +scale(Elev_Mean)  #elevation mean in block/route
+                       +scale(Elev_Range)  #elevation range in block/route
+                       +scale(Het_Count2006)  # land-class richness
+                       +scale(Shannon2006), # land-class diversity (Shannon-Wiener index
+                       data=., # data
+                       family="poisson")
+
+#table of model
+tab_model(prediction8.pa,
+          title="Local Bird Richness by Effort Full GLM PA",
+          string.pred = "Coefficient",
+          string.ci = "95% CIs",
+          string.p = "P-Value",
+          show.se = T,
+          string.se="SE")
+
+#VT
+prediction8.vt <- full_d %>%
+  filter(State=="VT") %>%
+  glm(logRichness ~ standard.effort*Dataset
+                       +scale(Precipitation)  #precipitation
+                       +scale(Temp)  #summer temperature
+                       +scale(Elev_Mean)  #elevation mean in block/route
+                       +scale(Elev_Range)  #elevation range in block/route
+                       +scale(Het_Count2006)  # land-class richness
+                       +scale(Shannon2006), # land-class diversity (Shannon-Wiener index
+                       data=., # data
+                       family="poisson")
+
+#table of model
+tab_model(prediction8.vt,
+          title="Local Bird Richness by Effort Full GLM VT",
+          string.pred = "Coefficient",
+          string.ci = "95% CIs",
+          string.p = "P-Value",
+          show.se = T,
+          string.se="SE")
+
+
+```
+
+```{r Prediction 8 state GLM Diagnostics, message=FALSE, warning=FALSE}
+
+#MA
+plot(prediction8.ma)
+
+#MI
+plot(prediction8.mi)
+
+#NY
+plot(prediction8.ny)
+
+#PA
+plot(prediction8.pa)
+
+#VT
+plot(prediction8.vt)
+
+```
+
+
+
+```{r Prediction 8 Full GLMM,message=FALSE,warning=FALSE}
+
+#Running GLMM Poisson
+prediction8.2 <- glmer(Atlas2_Total ~ standard.effort*Dataset   # interaction of data source and effort
+                       +scale(Precipitation)  #precipitation
+                       +scale(Temp)  #summer temperature
+                       +scale(Elev_Mean)  #elevation mean in block/route
+                       +scale(Elev_Range)  #elevation range in block/route
+                       +scale(Het_Count2006)  # land-class richness
+                       +scale(Shannon2006) # land-class diversity (Shannon-Wiener index)
+                       +(1|State), #state random effect
                        data=full_d, # data
-                     family=poisson) # family poisson
+                       family="poisson") #poisson error structure
+
+
 
 #AIC checking which is best model
 #step(prediction8.2)
 
 #table of model
 tab_model(prediction8.2,
-          title="Local Bird Richness by Effort Full GLM",
+          title="Local Bird Richness by Effort Full GLMM Poisson",
           string.pred = "Coefficient",
           string.ci = "95% CIs",
           string.p = "P-Value",
           show.se = T,
-          string.se="SE")%>%
-  return() %$% 
-    knitr %>% 
-    asis_output()
+          string.se="SE")
 
+#Adjusting for overdispersion
+kable(tidy_quasi(prediction8.2))
+
+#---
+
+#Running LMM 
+prediction8.2a <- lmer(logRichness ~ standard.effort*Dataset   # interaction of data source and effort
+                       +scale(Precipitation)  #precipitation
+                       +scale(Temp)  #summer temperature
+                       +scale(Elev_Mean)  #elevation mean in block/route
+                       +scale(Elev_Range)  #elevation range in block/route
+                       +scale(Het_Count2006)  # land-class richness
+                       +scale(Shannon2006) # land-class diversity (Shannon-Wiener index)
+                       +(1|State), #state random effect
+                       data=full_d) # data
+
+#table of model
+tab_model(prediction8.2a,
+          title="Local Bird Richness by Effort Full LMM",
+          string.pred = "Coefficient",
+          string.ci = "95% CIs",
+          string.p = "P-Value",
+          show.se = T,
+          string.se="SE")
+
+
+#---
+
+#using the glmmTMB pacakge to calculate quasi-possion (i.e. negative binomial 1)
+prediction8.2b <-glmmTMB::glmmTMB(Atlas2_Total ~ standard.effort*Dataset   # interaction of data source and effort
+                       +scale(Precipitation)  #precipitation
+                       +scale(Temp)  #summer temperature
+                       +scale(Elev_Mean)  #elevation mean in block/route
+                       +scale(Elev_Range)  #elevation range in block/route
+                       +scale(Het_Count2006)  # land-class richness
+                       +scale(Shannon2006) # land-class diversity (Shannon-Wiener index)
+                       +(1|State), #state random effect
+                       data=full_d,
+                       family="nbinom1") #negative binoimal 1 or quasi-poisson
+
+#table of model
+tab_model(prediction8.2b,
+          title="Local Bird Richness by Effort Full GLMM Quasi-Poisson",
+          string.pred = "Coefficient",
+          string.ci = "95% CIs",
+          string.p = "P-Value",
+          show.se = T,
+          string.se="SE")
 ```
 
+**Plotting full GLMM Poisson**
 
-**Plotting full GLM**
-
-```{r Prediction 8 Full GLM Plots, message=FALSE, warning=FALSE}
+```{r Prediction 8 Full GLMM Plots, message=FALSE, warning=FALSE}
 
 #rsquared
-r2=round(rsq(prediction8.2,adj=T),digits=4)
+r2.c=round(r.squaredGLMM(prediction8.2)[1,2],digits=4)
+r2.m=round(r.squaredGLMM(prediction8.2)[1,1],digits=4)
 
 #Plotting model
 plot_model(prediction8.2,
            show.values = T,
-           show.p=T,
-           show.intercept = T)+theme_classic()+
-geom_label(aes(x=5,y=5,
-                 label=paste("R2=",r2)),col="black")+
-  labs(title="GLM All Factors Contributing to Local Richness")
+           show.p=T)+
+  theme_classic()+
+  geom_label(aes(x=5,y=3,
+                 label=paste("R2 Marginal=",r2.m,
+                             "\nR2 Conditional=",r2.c)),col="black")+
+  labs(title="GLMM Poisson All Factors Contributing to Local Richness")+
+  geom_hline(yintercept = 1,linetype="dashed")
+  
+
+#plotting random effect
+plot_model(prediction8.2, type="re")
+
+#plot diagnostics
+plot_model(prediction8.2, type="diag")
+plot(prediction8.2)
+
+qqnorm(residuals(prediction8.2,type="deviance"))
+qqline(resid(prediction8.2))
 
 
 #Plotting interaction of Dataset and Effort
@@ -2089,6 +2992,120 @@ plot(effect("Shannon2006",prediction8.2))
 
 ```
 
+**Plotting full LMM not Poisson**
+
+```{r Prediction 8a Full LMM Plots, message=FALSE, warning=FALSE}
+
+#rsquared
+r2.c=round(r.squaredGLMM(prediction8.2a)[1,2],digits=4)
+r2.m=round(r.squaredGLMM(prediction8.2a)[1,1],digits=4)
+
+#Plotting model
+plot_model(prediction8.2a,
+           show.values = T,
+           show.p=T)+
+  theme_classic()+
+  geom_label(aes(x=5,y=20,
+                 label=paste("R2 Marginal=",r2.m,
+                             "\nR2 Conditional=",r2.c)),col="black")+
+  labs(title="LMM All Factors Contributing to Local Richness")+
+  geom_hline(yintercept = 1,linetype="dashed")
+  
+
+#plotting random effect
+plot_model(prediction8.2a, type="re")
+
+#plot diagnostics
+plot_model(prediction8.2a, type="diag")
+plot(prediction8.2a)
+
+qqnorm(residuals(prediction8.2a,type="deviance"))
+qqline(resid(prediction8.2a))
+
+
+#Plotting interaction of Dataset and Effort
+plot(effect(c("standard.effort","Dataset"),prediction8.2a))
+
+#Just effort
+plot(effect("standard.effort",prediction8.2a))
+
+#Just Dataset
+plot(effect("Dataset",prediction8.2a))
+
+#Precipitation
+plot(effect("Precipitation",prediction8.2a))
+
+#Temperature
+plot(effect("Temp",prediction8.2a))
+
+#Elevation
+plot(effect("Elev_Mean",prediction8.2a))
+
+#Elevation Range
+plot(effect("Elev_Range",prediction8.2a))
+
+#Land-Class Richness
+plot(effect("Het_Count2006",prediction8.2a))
+
+#Land-Class Diversity
+plot(effect("Shannon2006",prediction8.2a))
+
+
+```
+
+**Now looking at the Quassi-Poisson or negative binomial model**
+
+```{r Prediction 8b GLMM Diagnostics}
+#Plotting model
+plot_model(prediction8.2b,
+           show.values = T,
+           show.p=T)+
+  theme_classic()+
+  geom_label(aes(x=5,y=3,
+                 label=paste("R2 Marginal =",0.382,
+                             "\nR2 Conditional =",0.413)),col="black")+
+  labs(title="GLMM All Factors Contributing to Local Richness Quasi-Poisson")+
+  geom_hline(yintercept = 1,linetype="dashed")
+
+#plotting random effect
+plot_model(prediction8.2b, type="re")
+
+#plot diagnostics
+plot_model(prediction8.2b, type="diag")
+DHARMa::simulateResiduals(prediction8.2b)
+
+qqnorm(resid(prediction8.2b))
+qqline(resid(prediction8.2b))
+
+#Plotting interaction of Dataset and Effort
+plot(effect(c("standard.effort","Dataset"),prediction8.2b))
+
+#Just effort
+plot(effect("standard.effort",prediction8.2b))
+
+#Just Dataset
+plot(effect("Dataset",prediction8.2b))
+
+#Precipitation
+plot(effect("Precipitation",prediction8.2b))
+
+#Temperature
+plot(effect("Temp",prediction8.2b))
+
+#Elevation
+plot(effect("Elev_Mean",prediction8.2b))
+
+#Elevation Range
+plot(effect("Elev_Range",prediction8.2b))
+
+#Land-Class Richness
+plot(effect("Het_Count2006",prediction8.2b))
+
+#Land-Class Diversity
+plot(effect("Shannon2006",prediction8.2b))
+
+```
+
 
 **Now running regression on geographically matched pairs of BBA and BBS blocks (with most overlap) - difference in richness by difference in effort with state as a random effect**
 
@@ -2097,28 +3114,25 @@ plot(effect("Shannon2006",prediction8.2))
 
 #Creating difference in log richness and log effort columns and subsetting data for test
 prediction8.data <- Matched %>%
-  mutate(Richness_Diff = ifelse(BBSID==lag(BBSID),lag(logRichness)-logRichness,NA),
+  mutate(Richness_Diff = ifelse(BBSID==lag(BBSID),lag(Atlas2_Total)-Atlas2_Total,NA),
          Effort_Diff = ifelse(BBSID==lag(BBSID),lag(logEffort)-logEffort,NA)
                                 ) %>%
     dplyr::select(BBSID,State,Richness_Diff,Effort_Diff) %>%
   filter(!is.na(Richness_Diff))
 
 #Running GLM
-prediction8.3 <- glmer(Richness_Diff ~ Effort_Diff+(1|State),
+prediction8.3 <- lmer(Richness_Diff ~ Effort_Diff+(1|State),
                        data=prediction8.data)
 
 
 #table of model
 tab_model(prediction8.3,
-          title="GLM Difference Richness by Difference Effort\nMatched Sampling Units",
+          title="LMM Difference Richness by Difference Effort\nMatched Sampling Units",
           string.pred = "Coefficient",
           string.ci = "95% CIs",
           string.p = "P-Value",
           show.se = T,
-          string.se="SE")%>%
-  return() %$% 
-    knitr %>% 
-    asis_output()
+          string.se="SE")
 
 ```
 
@@ -2150,7 +3164,7 @@ pred %>%
   scale_color_brewer(type = "qual",palette = 2)+
   geom_line(aes(Effort_Diff, fit),alpha=0.5)+
   geom_ribbon(aes(Effort_Diff, ymin = lwr, ymax = upr), alpha = 0.1)+
-  geom_label(aes(x=2.5,y=-1.5,
+  geom_label(aes(x=2.5,y=-40,
                  label=paste("R2=",r2,"\ny=",
                              intercept,"+",slope,"* Effort Difference")),
              col="black",
@@ -2158,7 +3172,7 @@ pred %>%
   theme_classic()+
   labs(title="GLM Richness Difference by Difference Effort (BBA-BBS)\nGeographically Matched Pairs",
        x="Difference in Log Effort per Sampling Unit (BBA-BBS)",
-       y="Difference in Log Richness per Sampling Unit (BBA-BBS)")+
+       y="Difference in Richness per Sampling Unit (BBA-BBS)")+
   theme(plot.title=element_text(hjust=0.5))
 
 ```
@@ -2192,11 +3206,7 @@ tab_model(prediction8.4,
           string.ci = "95% CIs",
           string.p = "P-Value",
           show.se = T,
-          string.se="SE")%>%
-  return() %$% 
-    knitr %>% 
-    asis_output()
-
+          string.se="SE")
 ```
 
 *Now plotting*
