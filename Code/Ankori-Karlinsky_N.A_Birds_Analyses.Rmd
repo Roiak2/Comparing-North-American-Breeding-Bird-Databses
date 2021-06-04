@@ -260,7 +260,7 @@ elev_shapiro<-Environmental_Range_Comparison %>%
 shapiro_test(as.data.frame(elev_shapiro),elev_diff) #shaprio-wilks test (p value above 0.05 means we can do t-test)
 
 #all good!
-#rm(prec_shapiro,temp_shapiro,elev_shapiro)
+rm(prec_shapiro,temp_shapiro,elev_shapiro)
 
 ```
 
@@ -301,19 +301,21 @@ tadaa_t.test(data=Environmental_Range_Comparison,
 wilcox.test(Precipitation_Range~Dataset,
             data=Environmental_Range_Comparison,
             paired=T,
+            alternative="greater",
             conf.int = T)
 
 #For entire data Temperature
 wilcox.test(Temperature_Range~Dataset,
             data=Environmental_Range_Comparison,
             paired=T,
+            alternative="greater",
             conf.int = T)
-
 
 #For entire data Elevation
 wilcox.test(Elevation_Range~Dataset,
             data=Environmental_Range_Comparison,
             paired=T,
+            alternative="greater",
             conf.int = T)
 ```
 
@@ -356,12 +358,14 @@ tadaa_t.test(data=Adjacent_Environmental_Range_Comparison,
 wilcox.test(Precipitation_Range~Dataset,
             data=Adjacent_Environmental_Range_Comparison,
             paired=TRUE,
+            alternative="greater",
             conf.int = T)
 
 #For entire data Temperature
 wilcox.test(Temperature_Range~Dataset,
             data=Adjacent_Environmental_Range_Comparison,
             paired=TRUE,
+            alternative="greater",
             conf.int = T)
 
 
@@ -369,6 +373,7 @@ wilcox.test(Temperature_Range~Dataset,
 wilcox.test(Elevation_Range~Dataset,
             data=Adjacent_Environmental_Range_Comparison,
             paired=TRUE,
+            alternative="greater",
             conf.int = T)
 ```
 
@@ -410,12 +415,14 @@ tadaa_t.test(data=Sampled_Environmental_Range_Comparison,
 wilcox.test(Precipitation_Range~Dataset,
             data=Sampled_Environmental_Range_Comparison,
             paired=TRUE,
+            alternative="greater",
             conf.int = T)
 
 #For entire data Temperature
 wilcox.test(Temperature_Range~Dataset,
             data=Sampled_Environmental_Range_Comparison,
             paired=TRUE,
+            alternative="greater",
             conf.int = T)
 
 
@@ -423,6 +430,7 @@ wilcox.test(Temperature_Range~Dataset,
 wilcox.test(Elevation_Range~Dataset,
             data=Sampled_Environmental_Range_Comparison,
             paired=TRUE,
+            alternative="greater",
             conf.int = T)
 ```
 
@@ -462,12 +470,14 @@ tadaa_t.test(data=Sampled_Adjacent_Environmental_Range_Comparison,
 wilcox.test(Precipitation_Range~Dataset,
             data=Sampled_Adjacent_Environmental_Range_Comparison,
             paired=TRUE,
+            alternative="greater",
             conf.int = T)
 
 #For entire data Temperature
 wilcox.test(Temperature_Range~Dataset,
             data=Sampled_Adjacent_Environmental_Range_Comparison,
             paired=TRUE,
+            alternative="greater",
             conf.int = T)
 
 
@@ -475,6 +485,7 @@ wilcox.test(Temperature_Range~Dataset,
 wilcox.test(Elevation_Range~Dataset,
             data=Sampled_Adjacent_Environmental_Range_Comparison,
             paired=TRUE,
+            alternative="greater",
             conf.int = T)
 ```
 
@@ -1093,8 +1104,8 @@ tadaa_t.test(data=Richness_Comparison,
 wilcox.test(RichBBA$Regional_Richness,
             RichBBS$Regional_Richness,
             paired=TRUE,
+            alternative="greater",
             conf.int = T)
-
 
 ```
 
