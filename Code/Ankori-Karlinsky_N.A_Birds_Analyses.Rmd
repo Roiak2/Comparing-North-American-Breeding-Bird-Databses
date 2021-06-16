@@ -1941,10 +1941,9 @@ plot_model(sampled.prediction6,type="pred",terms =c("State","Dataset"),
 
 #Response variable is local richness (Atlas2_Total) with Dataset as the fixed effect and State as a random effect, with a Poisson as family
 
-sampled.adj.prediction6<- glmer(Atlas2_Total ~ Dataset+
+sampled.adj.prediction6<- lmer(Atlas2_Total ~ Dataset+
                       (1|State),
-               data=SampledAdj_Full, # data
-               family=poisson) # poisson
+               data=SampledAdj_Full)
 
 #Output of regression as table
 tab_model(sampled.adj.prediction6,
@@ -1953,10 +1952,7 @@ tab_model(sampled.adj.prediction6,
           string.ci = "95% CIs",
           string.p = "P-Value",
           show.se = T,
-          string.se="SE") %>%
-  return() %$% 
-    knitr %>% 
-    asis_output()
+          string.se="SE")
 
 ```
 
@@ -1984,9 +1980,9 @@ plot_model(sampled.adj.prediction6,
   labs(title="Local Bird Richness by Dataset Sampled Adjacent\n(State as random effect)",
        x="Dataset",
        y="Predicted Bird Species Richness")+
-   geom_label(aes(x=1.5,y=90,
-                 label=paste("Marginal R2=",adj.r2.m, 
-                             "\nConditional R2=",adj.r2.c)),col="black")+
+   #geom_label(aes(x=1.5,y=90,
+  #               label=paste("Marginal R2=",adj.r2.m, 
+  #                           "\nConditional R2=",adj.r2.c)),col="black")+
   theme(plot.title=element_text(hjust=.5))+
   scale_y_continuous(limits=c(70,100))
 
@@ -2009,9 +2005,9 @@ plot_model(sampled.adj.prediction6,
   labs(title="Local Bird Richness by Dataset Sampled Adjacent\n(State as random effect)",
        x="Dataset",
        y="Predicted Bird Species Richness")+
-   geom_label(aes(x=3,y=90,
-                 label=paste("Marginal R2=",adj.r2.m, 
-                             "\nConditional R2=",adj.r2.c)),col="black")+
+  # geom_label(aes(x=3,y=90,
+  #               label=paste("Marginal R2=",adj.r2.m, 
+  #                           "\nConditional R2=",adj.r2.c)),col="black")+
   scale_color_brewer(type = "qual",palette = 7)+
   theme(plot.title=element_text(hjust=.5))+
   scale_y_continuous(limits=c(70,100))
@@ -2696,14 +2692,14 @@ kable(call)
 ```{r Prediction 8 simple GLM, message=FALSE,warning=FALSE}
 
 #Running model
-prediction8.1 <- glm(logRichness ~ logEffort, # response and predictor
+prediction8.1 <- glm(Atlas2_Total ~ logEffort, # response and predictor
                      data=full_d, # data
         family=poisson) # poisson distribution
 
 
 ## table of model
 tab_model(prediction8.1,
-          title="Local Bird Richness by Effort (in hours)",
+          title="Poisson GLM Local Bird Richness by Effort (in hours)",
           string.pred = "Coefficient",
           string.ci = "95% CIs",
           string.p = "P-Value",
@@ -2721,6 +2717,23 @@ plot_model(prediction8.1,type="pred",
 
 #diagnostic
 plot(prediction8.1)
+
+#linear model not poisson
+prediction8.1b <- lm(Atlas2_Total ~ logEffort, # response and predictor
+                     data=full_d)
+
+## table of model
+tab_model(prediction8.1b,
+          title="LM Local Bird Richness by Effort (in hours)",
+          string.pred = "Coefficient",
+          string.ci = "95% CIs",
+          string.p = "P-Value",
+          show.se = T,
+          string.se="SE")
+
+#diagnostic
+plot(prediction8.1b)
+
 
 ```
 
@@ -3330,6 +3343,7 @@ my_pred %>%
 
 ```
 
+
 ```{r Prediction 8 removing items,message=FALSE, warning=FALSE}
 
 rm(my_pred,pred,predict8.4,predict8.5,
@@ -3840,11 +3854,10 @@ Running three separate models for each of our heterogeneity metrics (elevation r
 ```{r Ad-Hoc 3 Land-class richness model, message=FALSE, warning=FALSE}
 
 #running model
-assumption.landrich <- glmer(Atlas2_Total ~ Het_Count2006
+assumption.landrich <- lmer(Atlas2_Total ~ Het_Count2006
                              + as.factor(Dataset)
                              + (1|State),
-                             data=full_d,
-                             family=poisson)
+                             data=full_d)
 
 #output model
 tab_model(assumption.landrich,
@@ -3853,10 +3866,7 @@ tab_model(assumption.landrich,
           string.ci = "95% CIs",
           string.p = "P-Value",
           show.se = T,
-          string.se="SE") %>%
-  return() %$% 
-    knitr %>% 
-    asis_output()
+          string.se="SE")
 
 
 ```
@@ -3893,10 +3903,10 @@ plot_model(assumption.landrich,type="pred",
   labs(title="Predicted Local Richness by Land-Class Richness",
        x="Number of Land-Class Types",
        y="Local Bird Richness per Sampling Unit")+
-   geom_label(aes(x=10,y=20,
-                 label=paste("Marginal R2=",r2.m, 
-                             "\nConditional R2=",r2.c)),col="black",
-              label.size = NA)+
+  #geom_label(aes(x=10,y=20,
+  #               label=paste("Marginal R2=",r2.m, 
+  #                           "\nConditional R2=",r2.c)),col="black",
+  #            label.size = NA)+
   theme(plot.title=element_text(hjust=0.5))+
   coord_cartesian(ylim=c(0,130),xlim=c(0,15))+
   scale_y_continuous(breaks=seq(0,130,30))+
@@ -3983,11 +3993,10 @@ plot_model(assumption.landrich,type="pred",
 ```{r Ad-Hoc 3 Land-class diversity model, message=FALSE, warning=FALSE}
 
 #running model
-assumption.landdiv <- glmer(Atlas2_Total ~ Shannon2006
+assumption.landdiv <- lmer(Atlas2_Total ~ Shannon2006
                              + as.factor(Dataset)
                              + (1|State),
-                             data=full_d,
-                             family=poisson)
+                             data=full_d)
 
 #output model
 tab_model(assumption.landdiv,
@@ -3996,10 +4005,7 @@ tab_model(assumption.landdiv,
           string.ci = "95% CIs",
           string.p = "P-Value",
           show.se = T,
-          string.se="SE") %>%
-  return() %$% 
-    knitr %>% 
-    asis_output()
+          string.se="SE")
 
 
 ```
@@ -4034,10 +4040,10 @@ plot_model(assumption.landdiv,type="pred",
   labs(title="Predicted Local Richness by Land-Class Diversity",
        x="Land-Class Diversity",
        y="Local Bird Richness per Sampling Unit")+
-   geom_label(aes(x=1.5,y=20,
-                 label=paste("Marginal R2=",r2.m, 
-                             "\nConditional R2=",r2.c)),col="black",
-              label.size = NA)+
+  #geom_label(aes(x=1.5,y=20,
+  #               label=paste("Marginal R2=",r2.m, 
+  #                           "\nConditional R2=",r2.c)),col="black",
+  #            label.size = NA)+
   theme(plot.title=element_text(hjust=0.5))+
   coord_cartesian(ylim=c(0,130),xlim=c(0,2.5))+
   scale_y_continuous(breaks=seq(0,130,30))+

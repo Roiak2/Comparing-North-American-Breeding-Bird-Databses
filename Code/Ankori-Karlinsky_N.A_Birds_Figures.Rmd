@@ -982,9 +982,8 @@ prediction8.data <- full_d %>%
   filter(Atlas2_Effort>=2.5 & Atlas2_Effort<=15)
 
 
-prediction8.1 <- glm(Atlas2_Total ~ logEffort*Dataset,
-                       data=prediction8.data, # data
-                       family=poisson) # poisson distribution
+prediction8.1 <- lm(Atlas2_Total ~ logEffort*Dataset,
+                       data=prediction8.data) # data
 
 predict8 <- predict(prediction8.1,se.fit=T,type="response")
 
@@ -1007,7 +1006,7 @@ my_pred <- make_ci(predict8, prediction8.data)
 
 #Creating difference in log richness and log effort columns and subsetting data for test
 prediction8.data1 <- Matched %>%
-  mutate(Richness_Diff = ifelse(BBSID==lag(BBSID),lag(log10(Atlas2_Total))-log10(Atlas2_Total),NA),
+  mutate(Richness_Diff = ifelse(BBSID==lag(BBSID),lag(Atlas2_Total)-Atlas2_Total,NA),
          Effort_Diff = ifelse(BBSID==lag(BBSID),lag(log10(Atlas2_Effort))-log10(Atlas2_Effort),NA)
                                 ) %>%
     dplyr::select(BBSID,State,Richness_Diff,Effort_Diff) %>%
@@ -1016,7 +1015,7 @@ prediction8.data1 <- Matched %>%
          Effort_Diff != "-Inf")
 
 #Running GLM
-prediction8.3 <- glmer(Richness_Diff ~ Effort_Diff+(1|State),
+prediction8.3 <- lmer(Richness_Diff ~ Effort_Diff+(1|State),
                        data=prediction8.data1)
 
 # pulling predictions from model and confidence intervals
@@ -1039,12 +1038,13 @@ slope=round(x2[2],digits=4)
 
 #plot
 a <- full_d %>%
-  filter(Atlas2_Effort<300) %>% #removing outliers
+  filter(Atlas2_Effort<300 & Atlas2_Effort >1) %>% #removing outliers
   ggplot(aes(x=Atlas2_Effort,y=Atlas2_Total,color=Dataset,fill=Dataset))+
   geom_point(aes(group=Dataset,
                  color=Dataset),size=2)+
   #geom_tile(size=2.5)+
-  geom_line(data=my_pred,aes(Atlas2_Effort, fit),col="black",size=1)+
+  geom_line(data=my_pred,aes(Atlas2_Effort, fit,color=Dataset),size=1.5)+
+  geom_line(data=my_pred,aes(Atlas2_Effort, fit),color="white",size=0.5)+
   scale_color_manual(values=c("chocolate2",
                               "darkgreen"))+
   scale_fill_manual(values=c("chocolate2",
@@ -1052,11 +1052,7 @@ a <- full_d %>%
   theme_classic()+
   scale_x_continuous(trans="log10",labels=prettyNum,
                      breaks=log_breaks())+
-  scale_y_continuous(trans="log10",
-                     labels=prettyNum,
-                     breaks=log_breaks())+
-  #scale_y_continuous(breaks=seq(0,5,1))+
-  #scale_x_continuous(breaks=seq(0,8,2))+
+  scale_y_continuous(breaks=seq(0,130,30))+
   labs(title="a",
        x="Sampling effort (hours)",
        y="Local richness",
@@ -1083,19 +1079,19 @@ b<- pred %>%
   scale_color_brewer(type = "qual",palette = 2)+
   geom_line(aes(Effort_Diff, fit),alpha=0.5)+
   geom_ribbon(aes(Effort_Diff, ymin = lwr, ymax = upr), alpha = 0.1)+
-  annotate("text",x=0.25,y=-1,
-           label=paste("R^2 == 0.41"),parse=T)+
-  annotate("text",x=0.25,y=-1.15,
-           label=paste("                Y = -0.069+0.146X"))+
-  annotate("text",x=0.25,y=-1.3,
+  annotate("text",x=-0.5,y=60,
+           label=paste("R^2 == 0.535"),parse=T)+
+  annotate("text",x=-0.5,y=50,
+           label=paste("                Y = -10.74+23.15X"))+
+  annotate("text",x=-0.5,y=40,
            label=paste("p < 0.001"),parse=T)+
   theme_classic()+
-  coord_cartesian(xlim=c(-1.5,2),ylim=c(-1.5,0.5))+
-  scale_y_continuous(breaks=seq(-1.5,0.5,0.5))+
+  coord_cartesian(xlim=c(-1.5,2),ylim=c(-60,60))+
+  scale_y_continuous(breaks=seq(-60,60,30))+
   scale_x_continuous(breaks=seq(-1.5,2,1))+
   labs(title="b",
        x="Difference in log sampling effort",
-       y="Difference in log local richness",
+       y="Difference in local richness",
        color=NULL)+
   theme(plot.title=element_text(size=18,face="bold"),
         axis.text.x = element_text(size=16),
@@ -1356,14 +1352,13 @@ predicts1.data <- full_d %>%
 
 
 #running model on land-cover richness
-assumption.landrich <- glm(Atlas2_Total ~ Het_Count2006
+assumption.landrich <- lm(Atlas2_Total ~ Het_Count2006
                              + as.factor(Dataset),
-                             data=predicts1.data,
-                             family=poisson)
+                             data=predicts1.data)
 
 
 #predictions from model fit to then graph
-predicts1<- predict.glm(assumption.landrich,se.fit=T,type="response")
+predicts1<- predict(assumption.landrich,se.fit=T,type="response")
 
 #Function for CIs
 make_ci <- function(pred, data){
@@ -1381,14 +1376,13 @@ my_pred <- make_ci(predicts1, predicts1.data)
 
 
 #running model on land-cover diversity
-assumption.landdiv <- glm(Atlas2_Total ~ Shannon2006
+assumption.landdiv <- lm(Atlas2_Total ~ Shannon2006
                              + as.factor(Dataset),
-                             data=predicts1.data,
-                             family=poisson)
+                             data=predicts1.data)
 
 
 #predictions from model fit to then graph
-predicts1b <- predict.glm(assumption.landdiv,se.fit=T,type="response")
+predicts1b <- predict(assumption.landdiv,se.fit=T,type="response")
 
 #save data
 my_pred.b <- make_ci(predicts1b, predicts1.data)
