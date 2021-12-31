@@ -5,7 +5,7 @@
 
 ### Using two citizen science datasets, the breeding bird survey (BBS) and breeding bird atlases (BBA)
 ### This code was used for a paper titled *North American Breeding Bird Survey underestimates regional bird richness compared to Breeding Bird Atlases*
-### By Roi Ankori-Karlinsky, Michael Kalyuzhny, Katherine F. Barnes, Andrew M. Wilson, Curtis Flather, Rosalind Renfrew, Joan Walsh, Edna Guk, Ronen Kadmon , (2021), which will be published in *Ecosphere*: [![DOI](DOI:10.1002/ecs2.3925)] 
+### By Roi Ankori-Karlinsky, Michael Kalyuzhny, Katherine F. Barnes, Andrew M. Wilson, Curtis Flather, Rosalind Renfrew, Joan Walsh, Edna Guk, Ronen Kadmon , (2021), which will be published in *Ecosphere*: 
 
 
 ## The Data folder contains data used for the code
